@@ -1,3 +1,6 @@
+#getPriceRatio.py
+
+from datetime import date
 import pandas as pd
 import os
 
@@ -64,16 +67,13 @@ def getPrice(date_str, btc_file='btc_daily_closing_2years.csv', eth_file='eth_da
         'ratio': float(row['ratio'])
     }
 
-# Example usage when running the script directly
-if __name__ == "__main__":
-    # This will trigger data loading and CSV creation
-    today_price = getPrice('2025-12-24')
+def createPriceFile():
+    today = date.today().strftime('%Y-%m-%d')   
+    
+    today_price = getPrice(today)
     if today_price:
-        print("\nCurrent prices (December 24, 2025):")
+        print("Today's prices:")
         print(f"BTC: ${today_price['btc']:,.2f}")
         print(f"ETH: ${today_price['eth']:,.2f}")
         print(f"BTC/ETH ratio: {today_price['ratio']:.4f}")
-    
-    # Example historical lookup
-    print("\nHistorical example:")
-    print(getPrice('2023-11-26'))
+        print("==========================================================================================")
