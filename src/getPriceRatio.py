@@ -4,76 +4,95 @@ from datetime import date
 import pandas as pd
 import os
 
-# Global variables to cache the data (loaded only once)
-_combined_df = None
-_price_csv_path = 'btc_eth_price.csv'  # Output file with date included
+# Cache for loaded data: key = (asset1, asset2)
+_combined_cache = {}
+_price_csv_template = '{}_{}_price.csv'  # e.g., btc_eth_price.csv
 
-def _load_data(btc_file='btc_daily_closing_2years.csv', eth_file='eth_daily_closing_2years.csv'):
+
+def _load_data(asset1='BTC', asset2='ETH'):
+    asset1_lower = asset1.lower()
+    asset2_lower = asset2.lower()
+    cache_key = (asset1_lower, asset2_lower)
+    
+    if cache_key in _combined_cache:
+        return _combined_cache[cache_key]
+    
+    file1 = f'{asset1_lower}_daily_closing_2years.csv'
+    file2 = f'{asset2_lower}_daily_closing_2years.csv'
+    
     print("==========================================================================================")
-    print("calculating btc:eth price..")
-    global _combined_df
-    if _combined_df is not None:
-        return _combined_df
+    print(f"Calculating {asset1}/{asset2} price ratio...")
     
-    if not os.path.exists(btc_file):
-        raise FileNotFoundError(f"BTC file not found: {btc_file}")
-    if not os.path.exists(eth_file):
-        raise FileNotFoundError(f"ETH file not found: {eth_file}")
+    if not os.path.exists(file1):
+        raise FileNotFoundError(f"{asset1} file not found: {file1}")
+    if not os.path.exists(file2):
+        raise FileNotFoundError(f"{asset2} file not found: {file2}")
     
-    btc_df = pd.read_csv(btc_file)
-    eth_df = pd.read_csv(eth_file)
+    # Read CSV files
+    df1 = pd.read_csv(file1)
+    df2 = pd.read_csv(file2)
     
-    # Set date as index for fast lookup
-    btc_df.set_index('date', inplace=True)
-    eth_df.set_index('date', inplace=True)
+    # The second column is the price (first is 'date')
+    price_col1 = df1.columns[1]  # e.g., 'btc_closing_price_usd'
+    price_col2 = df2.columns[1]  # e.g., 'eth_closing_price_usd'
     
-    # Combine
-    combined = pd.concat([btc_df, eth_df], axis=1)
-    combined.columns = ['btc', 'eth']
-    combined['ratio'] = combined['btc'] / combined['eth']
+    # Set date as index
+    df1 = df1.set_index('date')
+    df2 = df2.set_index('date')
     
-    # Save the price/ratio CSV WITH the date column
-    result_df = combined.reset_index()[['date', 'btc', 'eth', 'ratio']]
-    result_df.to_csv(_price_csv_path, index=False)
-    print(f"All daily prices and ratios (with dates) saved to '{_price_csv_path}' ({len(result_df)} rows).")
+    # Extract only the price series
+    price_series1 = df1[price_col1]
+    price_series2 = df2[price_col2]
     
-    _combined_df = combined
-    return _combined_df
+    # Combine with inner join (only common dates)
+    combined = pd.concat([price_series1, price_series2], axis=1, join='inner')
+    combined.columns = [asset1_lower, asset2_lower]
+    
+    # Calculate ratio
+    combined['ratio'] = combined[asset1_lower] / combined[asset2_lower]
+    
+    # Save to CSV
+    result_df = combined.reset_index()[['date', asset1_lower, asset2_lower, 'ratio']]
+    output_csv = _price_csv_template.format(asset1_lower, asset2_lower)
+    result_df.to_csv(output_csv, index=False)
+    print(f"All daily prices and ratios saved to '{output_csv}' ({len(result_df)} rows).")
+    
+    _combined_cache[cache_key] = combined
+    return combined
 
-def getPrice(date_str, btc_file='btc_daily_closing_2years.csv', eth_file='eth_daily_closing_2years.csv'):
-    """
-    Get BTC price, ETH price, and BTC/ETH ratio for a specific date.
-    
-    Args:
-        date_str (str): Date in 'YYYY-MM-DD' format (e.g., '2025-12-24')
-        btc_file (str): Path to BTC CSV file
-        eth_file (str): Path to ETH CSV file
-    
-    Returns:
-        dict or None: {'date': str, 'btc': float, 'eth': float, 'ratio': float}
-                      Returns None if date not found.
-    """
-    df = _load_data(btc_file, eth_file)
+
+def getPrice(date_str, asset1='BTC', asset2='ETH'):
+    df = _load_data(asset1, asset2)
+    asset1_lower = asset1.lower()
+    asset2_lower = asset2.lower()
     
     if date_str not in df.index:
-        print(f"Warning: Date {date_str} not found in the data.")
+        print(f"Warning: Date {date_str} not found in the data for {asset1}/{asset2}.")
         return None
     
     row = df.loc[date_str]
     return {
         'date': date_str,
-        'btc': float(row['btc']),
-        'eth': float(row['eth']),
+        asset1_lower: float(row[asset1_lower]),
+        asset2_lower: float(row[asset2_lower]),
         'ratio': float(row['ratio'])
     }
 
-def createPriceFile():
-    today = date.today().strftime('%Y-%m-%d')   
+
+def createPriceFile(asset1='BTC', asset2='ETH'):
+    """
+    Print and save today's price ratio for two assets.
+    """
+    today = date.today().strftime('%Y-%m-%d')
     
-    today_price = getPrice(today)
+    today_price = getPrice(today, asset1, asset2)
     if today_price:
-        print("Today's prices:")
-        print(f"BTC: ${today_price['btc']:,.2f}")
-        print(f"ETH: ${today_price['eth']:,.2f}")
-        print(f"BTC/ETH ratio: {today_price['ratio']:.4f}")
+        asset1_lower = asset1.lower()
+        asset2_lower = asset2.lower()
+        print(f"Today's {asset1}/{asset2} prices:")
+        print(f"{asset1}: ${today_price[asset1_lower]:,.2f}")
+        print(f"{asset2}: ${today_price[asset2_lower]:,.2f}")
+        print(f"{asset1}/{asset2} ratio: {today_price['ratio']:.4f}")
         print("==========================================================================================")
+    else:
+        print(f"Could not retrieve prices for {today}.")

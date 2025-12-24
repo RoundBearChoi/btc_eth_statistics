@@ -1,17 +1,18 @@
-# main.py
-
 from getHistoricClosing import fetch_crypto_daily_closing
 from getPriceRatio import createPriceFile
 
 if __name__ == "__main__":
     print("Starting crypto historical data fetches...\n")
     
-    # Bitcoin 
-    btc_path = fetch_crypto_daily_closing('BTC')
-    print(f"BTC data saved to: {btc_path}\n")
+    # Fetch data for desired assets
+    assets = ['BTC', 'ETH', 'SOL']  # Add more as needed
     
-    # Ethereum  
-    eth_path = fetch_crypto_daily_closing('ETH')
-    print(f"ETH data saved to: {eth_path}\n")
-   
-    createPriceFile()
+    fetched_paths = {}
+    for asset in assets:
+        path = fetch_crypto_daily_closing(asset)
+        print(f"{asset} data saved to: {path}\n")
+        fetched_paths[asset] = path
+    
+    createPriceFile('BTC', 'ETH')   # BTC/ETH ratio
+    # createPriceFile('SOL', 'BTC') # Example: SOL/BTC ratio
+    # createPriceFile('BTC', 'SOL') # BTC/SOL ratio
