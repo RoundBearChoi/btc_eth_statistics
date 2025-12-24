@@ -1,7 +1,6 @@
 # main.py
 
 from getHistoricClosing import fetch_crypto_daily_closing
-from getPriceRatio import getPrice
 from getPriceRatio import createPriceFile
 
 if __name__ == "__main__":
