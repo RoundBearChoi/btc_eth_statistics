@@ -2,8 +2,11 @@
 
 import pandas as pd
 import os
+from getPriceRatio import createPriceFile
 
 def generate_price_change(asset1: str, asset2: str) -> None:
+    createPriceFile(asset1.upper(), asset2.upper())
+
     # Define paths relative to this script's location
     script_dir = os.path.dirname(os.path.abspath(__file__))
     data_dir = os.path.join(script_dir, '..', 'data')
