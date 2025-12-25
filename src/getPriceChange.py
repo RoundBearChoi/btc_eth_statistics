@@ -13,11 +13,9 @@ def generate_price_change(asset1: str, asset2: str) -> None:
 
     input_filename = f"{asset1}_{asset2}_price.csv"
     input_path = os.path.join(data_dir, input_filename)
-    #input_path = input_path.lower()
 
     output_filename = f"{asset1}_{asset2}_price_change.csv"
     output_path = os.path.join(data_dir, output_filename)
-    #output_path = output_path.lower()
 
     # Check if input file exists
     if not os.path.exists(input_path):
