@@ -4,6 +4,8 @@ from datetime import date
 import pandas as pd
 import os
 
+from getHistoricClosing import fetch_crypto_daily_closing
+
 # Cache for loaded data: key = (asset1, asset2)
 _combined_cache = {}
 _price_csv_template = '{}_{}_price.csv'  # e.g., btc_eth_price.csv
@@ -28,7 +30,7 @@ def _load_data(asset1='BTC', asset2='ETH'):
 
     print("")
     print("==========================================================================================")
-    print(f"Calculating {asset1}/{asset2} price ratio...")
+    print(f"calculating {asset1}/{asset2} price ratio..")
     
     if not os.path.exists(file1):
         raise FileNotFoundError(f"{asset1} file not found: {file1}")
@@ -66,7 +68,7 @@ def _load_data(asset1='BTC', asset2='ETH'):
     output_csv = os.path.join(data_dir, output_csv) 
 
     result_df.to_csv(output_csv, index=False)
-    print(f"All daily prices and ratios saved to '{os.path.abspath(output_csv)}' ({len(result_df)} rows).")
+    print(f"all daily prices and ratios saved to '{os.path.abspath(output_csv)}' ({len(result_df)} rows).")
     
     _combined_cache[cache_key] = combined
     return combined
@@ -91,9 +93,9 @@ def getPrice(date_str, asset1='BTC', asset2='ETH'):
 
 
 def createPriceFile(asset1='BTC', asset2='ETH'):
-    """
-    Print and save today's price ratio for two assets.
-    """
+    fetch_crypto_daily_closing(asset1)
+    fetch_crypto_daily_closing(asset2)
+
     today = date.today().strftime('%Y-%m-%d')
     
     today_price = getPrice(today, asset1, asset2)
@@ -101,7 +103,7 @@ def createPriceFile(asset1='BTC', asset2='ETH'):
     if today_price:
         asset1_lower = asset1.lower()
         asset2_lower = asset2.lower()
-        print(f"Today's {asset1}/{asset2} prices:")
+        print(f"today's {asset1}/{asset2} prices:")
         print(f"{asset1}: ${today_price[asset1_lower]:,.2f}")
         print(f"{asset2}: ${today_price[asset2_lower]:,.2f}")
         print(f"{asset1}/{asset2} ratio: {today_price['ratio']:.4f}")

@@ -32,7 +32,7 @@ def fetch_crypto_daily_closing(
     }
     print("")
     print("==========================================================================================")
-    print(f"Fetching historical daily data for {crypto_symbol}/{fiat_symbol} from CryptoCompare...")
+    print(f"fetching historical daily data for {crypto_symbol}/{fiat_symbol} from CryptoCompare..")
    
     try:
         response = requests.get(url, params=params)
@@ -62,9 +62,9 @@ def fetch_crypto_daily_closing(
     latest_date = datetime.fromtimestamp(latest_entry['time']).strftime('%Y-%m-%d')
     latest_price = latest_entry['close']
     
-    print(f"Latest closing price: {latest_price:,.2f} {fiat_symbol.upper()} on {latest_date} (00:00 UTC)")
-    print(f"Fetched {len(daily_data)} total daily points.")
-    print(f"Filtered to {len(recent_data)} points for the last ~{years} years.")
+    print(f"latest closing price: {latest_price:,.2f} {fiat_symbol.upper()} on {latest_date} (00:00 UTC)")
+    print(f"fetched {len(daily_data)} total daily points")
+    print(f"filtered to {len(recent_data)} points for the last ~{years} years")
 
     filename = f"{crypto_symbol}_daily_closing_2years.csv"
 
@@ -92,6 +92,6 @@ def fetch_crypto_daily_closing(
 
     # Get absolute path for printing
     full_path = os.path.abspath(csv_filepath)
-    print(f"Data successfully saved to: {full_path}")
+    print(f"data successfully saved to: {full_path}")
 
     return full_path
