@@ -11,11 +11,6 @@ def fetch_crypto_daily_closing(
     years: int = 2,
     filename: str = None
 ) -> str:
-    """
-    Fetches daily closing prices for a cryptocurrency over the specified number of years
-    from CryptoCompare and saves them to a CSV file.
-    Also prints the latest available closing price.
-    """
     # Auto-generate filename if not provided
     if filename is None:
         filename = f"{crypto_symbol.lower()}_daily_closing_{years}years.csv"
