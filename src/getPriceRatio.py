@@ -20,6 +20,12 @@ def _load_data(asset1='BTC', asset2='ETH'):
     file1 = f'{asset1_lower}_daily_closing_2years.csv'
     file2 = f'{asset2_lower}_daily_closing_2years.csv'
     
+    script_dir = os.path.dirname(os.path.abspath(__file__))  # directory of the current script
+    data_dir = os.path.join(script_dir, '..', 'data')
+    
+    file1 = os.path.join(data_dir, file1)
+    file2 = os.path.join(data_dir, file2)
+
     print("==========================================================================================")
     print(f"Calculating {asset1}/{asset2} price ratio...")
     

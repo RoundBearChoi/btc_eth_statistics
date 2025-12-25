@@ -67,17 +67,32 @@ def fetch_crypto_daily_closing(
     print(f"Fetched {len(daily_data)} total daily points.")
     print(f"Filtered to {len(recent_data)} points for the last ~{years} years.")
 
+    filename = f"{crypto_symbol}_daily_closing_2years.csv"
+
+    # Build path to parallel /data folder
+    # get the directory where this script is located (more reliable than cwd)
+    script_dir = os.path.dirname(os.path.abspath(__file__))  # directory of the current script
+    data_dir = os.path.join(script_dir, '..', 'data')
+
+    # Create the data directory if it doesn't exist
+    os.makedirs(data_dir, exist_ok=True)
+
+    # Full path for the CSV file inside the data folder
+    csv_filepath = os.path.join(data_dir, filename)
+    csv_filepath = csv_filepath.lower()
+
     # Write to CSV
-    with open(filename, 'w', newline='') as csvfile:
+    with open(csv_filepath, 'w', newline='') as csvfile:
         writer = csv.writer(csvfile)
         writer.writerow(['date', f'{crypto_symbol.lower()}_closing_price_{fiat_symbol.lower()}'])
-       
+        
         for entry in recent_data:
             date_str = datetime.fromtimestamp(entry['time']).strftime('%Y-%m-%d')
             closing_price = entry['close']
             writer.writerow([date_str, closing_price])
 
-    full_path = os.path.abspath(filename)
+    # Get absolute path for printing
+    full_path = os.path.abspath(csv_filepath)
     print(f"Data successfully saved to: {full_path}")
-   
+
     return full_path
