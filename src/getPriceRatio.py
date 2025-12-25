@@ -26,6 +26,7 @@ def _load_data(asset1='BTC', asset2='ETH'):
     file1 = os.path.join(data_dir, file1)
     file2 = os.path.join(data_dir, file2)
 
+    print("")
     print("==========================================================================================")
     print(f"Calculating {asset1}/{asset2} price ratio...")
     
@@ -60,8 +61,12 @@ def _load_data(asset1='BTC', asset2='ETH'):
     # Save to CSV
     result_df = combined.reset_index()[['date', asset1_lower, asset2_lower, 'ratio']]
     output_csv = _price_csv_template.format(asset1_lower, asset2_lower)
+  
+    # change path to /data folder
+    output_csv = os.path.join(data_dir, output_csv) 
+
     result_df.to_csv(output_csv, index=False)
-    print(f"All daily prices and ratios saved to '{output_csv}' ({len(result_df)} rows).")
+    print(f"All daily prices and ratios saved to '{os.path.abspath(output_csv)}' ({len(result_df)} rows).")
     
     _combined_cache[cache_key] = combined
     return combined
@@ -92,6 +97,7 @@ def createPriceFile(asset1='BTC', asset2='ETH'):
     today = date.today().strftime('%Y-%m-%d')
     
     today_price = getPrice(today, asset1, asset2)
+    
     if today_price:
         asset1_lower = asset1.lower()
         asset2_lower = asset2.lower()
@@ -99,6 +105,5 @@ def createPriceFile(asset1='BTC', asset2='ETH'):
         print(f"{asset1}: ${today_price[asset1_lower]:,.2f}")
         print(f"{asset2}: ${today_price[asset2_lower]:,.2f}")
         print(f"{asset1}/{asset2} ratio: {today_price['ratio']:.4f}")
-        print("==========================================================================================")
     else:
         print(f"Could not retrieve prices for {today}.")

@@ -30,6 +30,7 @@ def fetch_crypto_daily_closing(
         'tsym': fiat_symbol.upper(),
         'allData': 'true'
     }
+    print("")
     print("==========================================================================================")
     print(f"Fetching historical daily data for {crypto_symbol}/{fiat_symbol} from CryptoCompare...")
    
@@ -62,8 +63,6 @@ def fetch_crypto_daily_closing(
     latest_price = latest_entry['close']
     
     print(f"Latest closing price: {latest_price:,.2f} {fiat_symbol.upper()} on {latest_date} (00:00 UTC)")
-
-    print("==========================================================================================")
     print(f"Fetched {len(daily_data)} total daily points.")
     print(f"Filtered to {len(recent_data)} points for the last ~{years} years.")
 
