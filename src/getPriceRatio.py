@@ -62,7 +62,7 @@ def _load_data(asset1='BTC', asset2='ETH'):
     result_df = combined.reset_index()[['date', asset1_lower, asset2_lower, 'ratio']]
     output_csv = _price_csv_template.format(asset1_lower, asset2_lower)
   
-    # change path to /data folder
+    # change path to ../data 
     output_csv = os.path.join(data_dir, output_csv) 
 
     result_df.to_csv(output_csv, index=False)
