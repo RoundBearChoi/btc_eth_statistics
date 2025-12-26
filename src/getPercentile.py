@@ -58,8 +58,16 @@ def showPercentileGraph(asset1: str, asset2: str) -> None:
     p95 = df_sorted['change_pct'].quantile(0.95)
     plt.axhline(p5, color='red', linestyle='--', label='5th percentile')
     plt.axhline(p95, color='red', linestyle='--', label='95th percentile')
-    #plt.legend()
     
+    # add text labels next to the lines (placed at the right edge of the plot)
+    plt.text(len(df_sorted) - 0.5, p5, f'  5th percentile: {p5:+.3f}%', 
+             va='center', ha='left', color='red', fontsize=10, fontweight='bold',
+             bbox=dict(facecolor='white', alpha=0.8, edgecolor='none', pad=3))
+
+    plt.text(len(df_sorted) - 0.5, p95, f'  95th percentile: {p95:+.3f}%', 
+             va='center', ha='left', color='red', fontsize=10, fontweight='bold',
+             bbox=dict(facecolor='white', alpha=0.8, edgecolor='none', pad=3))
+
     plt.tight_layout()
     graph_file = f"{asset1}_{asset2}_change_pct_bargraph.png"
     graph_path = os.path.join(dataDir, graph_file)
