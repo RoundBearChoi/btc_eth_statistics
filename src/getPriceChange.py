@@ -49,6 +49,5 @@ def generate_price_change(asset1: str, asset2: str) -> None:
     output_path = os.path.abspath(output_path)
    
     print("")
-    print("==========================================================================================")
-    print(f"price change data saved to: {output_path}")
+    print(f" --- price change saved to: {output_path} ---")
     print(result_df.tail(20)) 

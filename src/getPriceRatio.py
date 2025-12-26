@@ -29,8 +29,7 @@ def _load_data(asset1='BTC', asset2='ETH'):
     file2 = os.path.join(data_dir, file2)
 
     print("")
-    print("==========================================================================================")
-    print(f"calculating {asset1}/{asset2} price ratio..")
+    print(f" --- calculating {asset1}/{asset2} price ratio ---")
     
     if not os.path.exists(file1):
         raise FileNotFoundError(f"{asset1} file not found: {file1}")

@@ -26,8 +26,7 @@ def fetch_crypto_daily_closing(
         'allData': 'true'
     }
     print("")
-    print("==========================================================================================")
-    print(f"fetching historical daily data for {crypto_symbol}/{fiat_symbol} from CryptoCompare..")
+    print(f" --- fetching historical daily data for {crypto_symbol}/{fiat_symbol} from cryptocompare ---")
    
     try:
         response = requests.get(url, params=params)
