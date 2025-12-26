@@ -27,4 +27,12 @@ def showPercentileGraph(asset1: str, asset2: str) -> None:
     if missing:
         raise ValueError(f"missing expected column: {missing}")
 
-
+    df_sorted = df.sort_values(by='change_pct', ascending=True)
+    
+    # Create new filename with '_ordered'
+    ordered_fileName = f"{asset1}_{asset2}_price_change_ordered.csv"
+    ordered_filePath = os.path.join(dataDir, ordered_fileName)
+    
+    df_sorted.to_csv(ordered_filePath, index=False)
+    print(f"ordered CSV saved to: {os.path.abspath(ordered_filePath)}")
+    print(df_sorted.head(20))
