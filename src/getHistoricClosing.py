@@ -1,4 +1,4 @@
-#getHistoricClosing.py
+# src/getHistoricClosing.py
 
 import requests
 import csv

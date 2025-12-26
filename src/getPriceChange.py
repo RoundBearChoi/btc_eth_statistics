@@ -3,6 +3,7 @@
 import pandas as pd
 import os
 from getPriceRatio import createPriceFile
+from getPercentile import showPercentileGraph
 
 def generate_price_change(asset1: str, asset2: str) -> None:
     createPriceFile(asset1.upper(), asset2.upper())
@@ -40,8 +41,8 @@ def generate_price_change(asset1: str, asset2: str) -> None:
     result_df = df[['date', 'ratio', 'change_pct']].copy()
     
     # Optional: round for cleaner output
-    result_df['ratio'] = result_df['ratio'].round(6)
-    result_df['change_pct'] = result_df['change_pct'].round(4)
+    result_df['ratio'] = result_df['ratio'].round(12)
+    result_df['change_pct'] = result_df['change_pct'].round(8)
     
     # Save to CSV
     result_df.to_csv(output_path, index=False)
@@ -50,4 +51,6 @@ def generate_price_change(asset1: str, asset2: str) -> None:
    
     print("")
     print(f" --- price change saved to: {output_path} ---")
-    print(result_df.tail(20)) 
+    print(result_df.tail(20))
+
+    showPercentileGraph(asset1, asset2)

@@ -1,4 +1,4 @@
-#getPriceRatio.py
+# src/getPriceRatio.py
 
 from datetime import date
 import pandas as pd
@@ -70,6 +70,7 @@ def _load_data(asset1='BTC', asset2='ETH'):
     print(f"all daily prices and ratios saved to '{os.path.abspath(output_csv)}' ({len(result_df)} rows).")
     
     _combined_cache[cache_key] = combined
+    
     return combined
 
 
