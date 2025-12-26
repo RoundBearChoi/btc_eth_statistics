@@ -2,6 +2,7 @@
 
 import os
 import pandas as pd
+import matplotlib.pyplot as plt
 
 def showPercentileGraph(asset1: str, asset2: str) -> None:
     print("")
@@ -27,12 +28,39 @@ def showPercentileGraph(asset1: str, asset2: str) -> None:
     if missing:
         raise ValueError(f"missing expected column: {missing}")
 
+    # sort and create new file
     df_sorted = df.sort_values(by='change_pct', ascending=True)
     
-    # Create new filename with '_ordered'
     ordered_fileName = f"{asset1}_{asset2}_price_change_ordered.csv"
     ordered_filePath = os.path.join(dataDir, ordered_fileName)
     
     df_sorted.to_csv(ordered_filePath, index=False)
     print(f"ordered CSV saved to: {os.path.abspath(ordered_filePath)}")
     print(df_sorted.head(20))
+
+    # create bar graph
+    plt.figure(figsize=(14, 7))
+    bars = plt.bar(range(len(df_sorted)), df_sorted['change_pct'], color='skyblue', edgecolor='navy', linewidth=0.5)
+    
+    # highlight negative and positive bars
+    for bar in bars:
+        if bar.get_height() < 0:
+            bar.set_color('salmon')
+    
+    plt.title(f'{asset1.upper()} vs {asset2.upper()} - Daily Price Change % (Sorted Lowest to Highest)', fontsize=16)
+    plt.xlabel('Sorted Day Index (1 = worst day, last = best day)', fontsize=12)
+    plt.ylabel('Price Change %', fontsize=12)
+    plt.axhline(0, color='black', linewidth=1)
+    plt.grid(axis='y', linestyle='--', alpha=0.7)
+    
+    # add percentile lines or labels if you want to mark specific percentiles later
+    p10 = df_sorted['change_pct'].quantile(0.1)
+    plt.axhline(p10, color='red', linestyle='--', label='10th percentile')
+    plt.legend()
+    
+    plt.tight_layout()
+    graph_file = f"{asset1}_{asset2}_change_pct_bargraph.png"
+    graph_path = os.path.join(dataDir, graph_file)
+    plt.savefig(graph_path)
+    print(f"\nbar graph saved to: {os.path.abspath(graph_path)}")
+    plt.show()

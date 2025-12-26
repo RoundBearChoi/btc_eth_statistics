@@ -22,7 +22,7 @@ def _load_data(asset1='BTC', asset2='ETH'):
     file1 = f'{asset1_lower}_daily_closing_2years.csv'
     file2 = f'{asset2_lower}_daily_closing_2years.csv'
     
-    script_dir = os.path.dirname(os.path.abspath(__file__))  # directory of the current script
+    script_dir = os.path.dirname(os.path.abspath(__file__))
     data_dir = os.path.join(script_dir, '..', 'data')
     
     file1 = os.path.join(data_dir, file1)
@@ -41,8 +41,8 @@ def _load_data(asset1='BTC', asset2='ETH'):
     df2 = pd.read_csv(file2)
     
     # The second column is the price (first is 'date')
-    price_col1 = df1.columns[1]  # e.g., 'btc_closing_price_usd'
-    price_col2 = df2.columns[1]  # e.g., 'eth_closing_price_usd'
+    price_col1 = df1.columns[1]
+    price_col2 = df2.columns[1]
     
     # Set date as index
     df1 = df1.set_index('date')
