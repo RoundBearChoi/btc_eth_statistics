@@ -28,6 +28,7 @@ def generate_replicates(asset1: str, asset2: str) -> None:
     if missing:
         raise ValueError(f"missing expected column: {missing}")
 
+    '''
     totalRows = len(df)
     heuristics = round(math.sqrt(totalRows))
     print(f"loaded {os.path.abspath(filePath)}")
@@ -37,5 +38,24 @@ def generate_replicates(asset1: str, asset2: str) -> None:
     randInt = rng.integers(0, totalRows)
     print(f"generated randInt between 0 to {totalRows}: {randInt}")
     print(', '.join(df.iloc[randInt].astype(str)))   # comma-separated
+    '''
+
+    totalRows = len(df)
+    heuristics = round(math.sqrt(totalRows))
+    print(f"loaded {os.path.abspath(filePath)}")
+    print(f"total rows: {totalRows}.. heuristics: {heuristics}..")
+
+    print("\nrep 0")
+    rng = np.random.default_rng()
+    randInt = rng.integers(0, totalRows)
+
+    print(f"generated randInt between 0 to {totalRows}: {randInt}")
+
+    for i in range(heuristics):
+        idx = (randInt + i) % totalRows  # modular arithmetic handles the wrap-around
+        row_str = ', '.join(df.iloc[idx].astype(str))
+        print(f"Index {idx}: {row_str}")
+
+
 
 
