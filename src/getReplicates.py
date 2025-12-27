@@ -3,6 +3,7 @@
 import os
 import pandas as pd
 import math
+import numpy as np
 
 def generate_replicates(asset1: str, asset2: str) -> None:
     print("")
@@ -32,5 +33,9 @@ def generate_replicates(asset1: str, asset2: str) -> None:
     print(f"loaded {os.path.abspath(filePath)}")
     print(f"total rows: {totalRows}.. heuristics: {heuristics}..")
 
+    rng = np.random.default_rng()
+    randInt = rng.integers(0, totalRows)
+    print(f"generated randInt between 0 to {totalRows}: {randInt}")
+    print(', '.join(df.iloc[randInt].astype(str)))   # comma-separated
 
 
