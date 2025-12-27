@@ -1,6 +1,8 @@
 # getReplicates.py
 
 import os
+import pandas as pd
+import math
 
 def generate_replicates(asset1: str, asset2: str) -> None:
     print("")
@@ -17,5 +19,18 @@ def generate_replicates(asset1: str, asset2: str) -> None:
 
     if not os.path.exists(filePath):
         raise FileNotFoundError(f"file not found: {filePath}")
+
+    df = pd.read_csv(filePath)
+    
+    expectedCols = ['date', 'ratio', 'change_pct']
+    missing = [col for col in expectedCols if col not in df.columns]
+    if missing:
+        raise ValueError(f"missing expected column: {missing}")
+
+    totalRows = len(df)
+    heuristics = round(math.sqrt(totalRows))
+    print(f"loaded {os.path.abspath(filePath)}")
+    print(f"total rows: {totalRows}.. heuristics: {heuristics}..")
+
 
 
