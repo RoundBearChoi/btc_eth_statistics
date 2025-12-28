@@ -1,65 +1,103 @@
 # getReplicates.py
-
 import os
-import csv
 import pandas as pd
 import math
 import numpy as np
 
+def generate_block(repIndex: int, blockIndex: int, df: pd.DataFrame, block_size: int) -> pd.DataFrame:
+    """
+    Generate a random wrapped block of rows from the DataFrame.
+    """
+    totalRows = len(df)
+    rng = np.random.default_rng()
+    randInt = rng.integers(0, totalRows)  # random starting row
+
+    # Wrapped indices
+    indices = [(randInt + i) % totalRows for i in range(block_size)]
+
+    # Select rows: date, ratio, change_pct
+    selected = df.iloc[indices, [0, 1, 2]].copy().reset_index(drop=True)
+    selected.columns = ['date', 'ratio', 'change_pct']
+
+    # Add replicate and block info
+    selected.insert(0, 'replicate_index', repIndex)
+    selected.insert(1, 'block_index', blockIndex)
+
+    return selected
+
+
 def generate_replicates(asset1: str, asset2: str) -> None:
     print("")
     print(" --- generating replicates ---")
-    
+
     scriptDir = os.path.dirname(os.path.abspath(__file__))
     dataDir = os.path.join(scriptDir, '..', 'data')
 
     asset1 = asset1.lower()
     asset2 = asset2.lower()
 
-    fileName = f"{asset1}_{asset2}_price_change.csv"
-    filePath = os.path.join(dataDir,fileName)
+    input_file = f"{asset1}_{asset2}_price_change.csv"
+    input_path = os.path.join(dataDir, input_file)
 
-    if not os.path.exists(filePath):
-        raise FileNotFoundError(f"file not found: {filePath}")
+    if not os.path.exists(input_path):
+        raise FileNotFoundError(f"File not found: {input_path}")
 
-    df = pd.read_csv(filePath)
-    
+    df = pd.read_csv(input_path)
+
     expectedCols = ['date', 'ratio', 'change_pct']
     missing = [col for col in expectedCols if col not in df.columns]
     if missing:
-        raise ValueError(f"missing expected column: {missing}")
+        raise ValueError(f"Missing expected columns: {missing}")
 
-    print(f"loaded {os.path.abspath(filePath)}")
+    print(f"Loaded {len(df)} rows from {os.path.abspath(input_path)}")
 
-    # create {asset1}_{asset2}_replicates.csv under /data
-    # headers replicate_index,block_index,date_index,{asset1}_{asset2}_price,change_pct
-    fieldnames = ['replicate_index', 'block_index', 'date_index', f'{asset1}_{asset2}_price', 'change_pct']
-    with open(os.path.join(dataDir, f'{asset1}_{asset2}_replicates.csv'), 'w', newline='', encoding='utf-8') as file:
-        writer = csv.DictWriter(file, fieldnames=fieldnames)
-        writer.writeheader()
+    # Output setup
+    price_col_name = f'{asset1}_{asset2}_price'
+    fieldnames = ['replicate_index', 'block_index', 'date', price_col_name, 'change_pct']
 
-    # write data
-    blockCount = math.ceil(len(df) / round(math.sqrt(len(df))))
+    output_file = os.path.join(dataDir, f'{asset1}_{asset2}_replicates.csv')
 
-    for i in range(blockCount):
-        print("")
-        print(generate_block(0, i, df))
+    # Block parameters
+    total_rows = len(df)
+    block_size = round(math.sqrt(total_rows))
+    block_count = math.ceil(total_rows / block_size)
+
+    print(f"Total rows: {total_rows}")
+    print(f"Block size: {block_size}")
+    print(f"Number of blocks: {block_count}")
+    print(f"Generating one replicate (index 0) with {block_count} random wrapped blocks...")
+
+    all_blocks = []
+
+    for block_index in range(block_count):
+        block_df = generate_block(
+            repIndex=0,
+            blockIndex=block_index,
+            df=df,
+            block_size=block_size
+        )
+
+        # Add the price column (same as ratio)
+        block_df[price_col_name] = block_df['ratio']
+
+        # Final column order
+        final_block = block_df[['replicate_index', 'block_index', 'date', price_col_name, 'change_pct']]
+
+        all_blocks.append(final_block)
+
+        first_date = block_df['date'].iloc[0]
+        print(f"Generated block {block_index + 1}/{block_count}.. starting at {first_date}")
+
+    # Combine all blocks into one replicate
+    replicate_df = pd.concat(all_blocks, ignore_index=True)
+
+    # Save to CSV
+    replicate_df.to_csv(output_file, index=False)
+    print(f"\nReplicate saved to: {os.path.abspath(output_file)}")
+    print(f"Total rows in replicate: {len(replicate_df)}")
+    print("Columns:", list(replicate_df.columns))
 
 
-def generate_block(repIndex: int, blockIndex: int, df: pd.DataFrame) -> pd.DataFrame:
-    totalRows = len(df)
-    heuristics = round(math.sqrt(totalRows))
-    rng = np.random.default_rng()
-    randInt = rng.integers(0, totalRows)  # starting row index (0 to totalRows-1)
-    
-    # Compute the wrapped indices
-    indices = [(randInt + i) % totalRows for i in range(heuristics)]
-    
-    # Select the consecutive (wrapped) rows from df (only the 3 columns you need: 0,1,2)
-    selected = df.iloc[indices, [0, 1, 2]].reset_index(drop=True)
-    
-    # Add the repIndex and blockIndex as new columns (same value for all rows in this block)
-    selected.insert(0, 'repIndex', repIndex)
-    selected.insert(1, 'blockIndex', blockIndex)
-    
-    return selected
+# Example usage
+# if __name__ == "__main__":
+#     generate_replicates("bitcoin", "ethereum")
