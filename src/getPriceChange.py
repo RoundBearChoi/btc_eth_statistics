@@ -6,8 +6,8 @@ from getPriceRatio import createPriceFile
 from getPercentile import showPercentileGraph
 
 def generate_price_change(asset1: str, asset2: str) -> None:
-    createPriceFile(asset1.upper(), asset2.upper())
 
+    createPriceFile(asset1.upper(), asset2.upper())
     # Define paths relative to this script's location
     script_dir = os.path.dirname(os.path.abspath(__file__))
     data_dir = os.path.join(script_dir, '..', 'data')
@@ -43,14 +43,19 @@ def generate_price_change(asset1: str, asset2: str) -> None:
     # Optional: round for cleaner output
     result_df['ratio'] = result_df['ratio'].round(12)
     result_df['change_pct'] = result_df['change_pct'].round(8)
+
+    # remove day 0
+    result_df = result_df.iloc[1:].reset_index(drop=True)
+    print(f"{len(result_df)} rows after removing day 0")
+    
+    print("")
+    print(" --- generating price change file ---")
     
     # Save to CSV
     result_df.to_csv(output_path, index=False)
-    
     output_path = os.path.abspath(output_path)
-   
-    print("")
-    print(f" --- price change saved to: {output_path} ---")
+    print(f"price change saved to: {output_path}")
+    print("printing tail 20..")
     print(result_df.tail(20))
 
     showPercentileGraph(asset1, asset2)

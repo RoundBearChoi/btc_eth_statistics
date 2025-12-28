@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 
 def showPercentileGraph(asset1: str, asset2: str) -> None:
     print("")
-    print(" --- calculating percentiles --- ")
+    print(" --- generating percentile file --- ")
    
     # make sure file exists in /data
     scriptDir = os.path.dirname(os.path.abspath(__file__))
@@ -28,6 +28,8 @@ def showPercentileGraph(asset1: str, asset2: str) -> None:
     if missing:
         raise ValueError(f"missing expected column: {missing}")
 
+    print(f"sorting {len(df)} rows..")
+
     # sort and create new file
     df_sorted = df.sort_values(by='change_pct', ascending=True)
     
@@ -35,8 +37,12 @@ def showPercentileGraph(asset1: str, asset2: str) -> None:
     ordered_filePath = os.path.join(dataDir, ordered_fileName)
     
     df_sorted.to_csv(ordered_filePath, index=False)
-    print(f"ordered CSV saved to: {os.path.abspath(ordered_filePath)}")
+    print(f"ordered data saved to: {os.path.abspath(ordered_filePath)}")
+    print("printing head 20..")
     print(df_sorted.head(20))
+    print("")
+    print("printing tail 20..")
+    print(df_sorted.tail(20))
 
     # create bar graph
     plt.figure(figsize=(14, 7))
