@@ -42,21 +42,27 @@ def generate_replicates(asset1: str, asset2: str) -> None:
     blockCount = math.ceil(len(df) / round(math.sqrt(len(df))))
 
     for i in range(blockCount):
-        generate_block(0, i, df)
+        print("")
+        print(generate_block(0, i, df))
 
 
-def generate_block(repIndex: int, blockIndex: int, df: pd.DataFrame) -> None:
+def generate_block(repIndex: int, blockIndex: int, df: pd.DataFrame) -> pd.DataFrame:
     totalRows = len(df)
     heuristics = round(math.sqrt(totalRows))
-
     rng = np.random.default_rng()
-    randInt = rng.integers(0, totalRows)
-
-    print("")
-    print(f"generated randInt between 0 to {totalRows}: {randInt}")
-
-    for i in range(heuristics):
-        idx = (randInt + i) % totalRows  # modular arithmetic handles the wrap-around
-        row_str = ', '.join(df.iloc[idx].astype(str))
-        print(f"block {blockIndex}, index {idx}, {row_str}")
-
+    randInt = rng.integers(0, totalRows)  # starting row index (0 to totalRows-1)
+    
+    #print("")
+    #print(f"generated randInt between 0 to {totalRows-1}: {randInt}")
+    
+    # Compute the wrapped indices
+    indices = [(randInt + i) % totalRows for i in range(heuristics)]
+    
+    # Select the consecutive (wrapped) rows from df (only the 3 columns you need: 0,1,2)
+    selected = df.iloc[indices, [0, 1, 2]].reset_index(drop=True)
+    
+    # Add the repIndex and blockIndex as new columns (same value for all rows in this block)
+    selected.insert(0, 'repIndex', repIndex)
+    selected.insert(1, 'blockIndex', blockIndex)
+    
+    return selected
