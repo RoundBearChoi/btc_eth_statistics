@@ -1,6 +1,7 @@
 # getReplicates.py
 
 import os
+import csv
 import pandas as pd
 import math
 import numpy as np
@@ -30,13 +31,21 @@ def generate_replicates(asset1: str, asset2: str) -> None:
 
     print(f"loaded {os.path.abspath(filePath)}")
 
+    # create {asset1}_{asset2}_replicates.csv under /data
+    # replicate_index,block_index,date_index,{asset1}_{asset2}_price,change_pct
+    fieldnames = ['replicate_index', 'block_index', 'date_index', f'{asset1}_{asset2}_price', 'change_pct']
+    with open(os.path.join(dataDir, f'{asset1}_{asset2}_replicates.csv'), 'w', newline='', encoding='utf-8') as file:
+        writer = csv.DictWriter(file, fieldnames=fieldnames)
+        writer.writeheader()
+
+    # write data
     blockCount = math.ceil(len(df) / round(math.sqrt(len(df))))
 
     for i in range(blockCount):
-        generate_block(i, df)
+        generate_block(0, i, df)
 
 
-def generate_block(blockIndex: int, df: pd.DataFrame) -> None:
+def generate_block(repIndex: int, blockIndex: int, df: pd.DataFrame) -> None:
     totalRows = len(df)
     heuristics = round(math.sqrt(totalRows))
 
