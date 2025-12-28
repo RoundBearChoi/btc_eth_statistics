@@ -32,7 +32,7 @@ def generate_replicates(asset1: str, asset2: str) -> None:
     print(f"loaded {os.path.abspath(filePath)}")
 
     # create {asset1}_{asset2}_replicates.csv under /data
-    # replicate_index,block_index,date_index,{asset1}_{asset2}_price,change_pct
+    # headers replicate_index,block_index,date_index,{asset1}_{asset2}_price,change_pct
     fieldnames = ['replicate_index', 'block_index', 'date_index', f'{asset1}_{asset2}_price', 'change_pct']
     with open(os.path.join(dataDir, f'{asset1}_{asset2}_replicates.csv'), 'w', newline='', encoding='utf-8') as file:
         writer = csv.DictWriter(file, fieldnames=fieldnames)
