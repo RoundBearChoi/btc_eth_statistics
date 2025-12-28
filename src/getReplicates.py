@@ -96,8 +96,3 @@ def generate_replicates(asset1: str, asset2: str) -> None:
     print(f"\nReplicate saved to: {os.path.abspath(output_file)}")
     print(f"Total rows in replicate: {len(replicate_df)}")
     print("Columns:", list(replicate_df.columns))
-
-
-# Example usage
-# if __name__ == "__main__":
-#     generate_replicates("bitcoin", "ethereum")
