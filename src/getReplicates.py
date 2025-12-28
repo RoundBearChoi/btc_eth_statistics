@@ -1,4 +1,3 @@
-# getReplicates.py
 import os
 import pandas as pd
 import math
@@ -11,31 +10,23 @@ def generate_block(repIndex: int, blockIndex: int, df: pd.DataFrame, block_size:
     totalRows = len(df)
     rng = np.random.default_rng()
     randInt = rng.integers(0, totalRows)  # random starting row
-
     # Wrapped indices
     indices = [(randInt + i) % totalRows for i in range(block_size)]
-
     # Select rows: date, ratio, change_pct
     selected = df.iloc[indices, [0, 1, 2]].copy().reset_index(drop=True)
     selected.columns = ['date', 'ratio', 'change_pct']
-
     # Add replicate and block info
     selected.insert(0, 'replicate_index', repIndex)
     selected.insert(1, 'block_index', blockIndex)
-
     return selected
 
-
-def generate_replicates(asset1: str, asset2: str) -> None:
+def generate_replicates(asset1: str, asset2: str, n_replicates: int = 10) -> None:
     print("")
     print(" --- generating replicates ---")
-
     scriptDir = os.path.dirname(os.path.abspath(__file__))
     dataDir = os.path.join(scriptDir, '..', 'data')
-
     asset1 = asset1.lower()
     asset2 = asset2.lower()
-
     input_file = f"{asset1}_{asset2}_price_change.csv"
     input_path = os.path.join(dataDir, input_file)
 
@@ -43,7 +34,6 @@ def generate_replicates(asset1: str, asset2: str) -> None:
         raise FileNotFoundError(f"File not found: {input_path}")
 
     df = pd.read_csv(input_path)
-
     expectedCols = ['date', 'ratio', 'change_pct']
     missing = [col for col in expectedCols if col not in df.columns]
     if missing:
@@ -64,35 +54,43 @@ def generate_replicates(asset1: str, asset2: str) -> None:
 
     print(f"Total rows: {total_rows}")
     print(f"Block size: {block_size}")
-    print(f"Number of blocks: {block_count}")
-    print(f"Generating one replicate (index 0) with {block_count} random wrapped blocks...")
+    print(f"Number of blocks per replicate: {block_count}")
+    print(f"Generating {n_replicates} replicates...")
 
-    all_blocks = []
+    all_replicates = []
 
-    for block_index in range(block_count):
-        block_df = generate_block(
-            repIndex=0,
-            blockIndex=block_index,
-            df=df,
-            block_size=block_size
-        )
+    for rep_index in range(n_replicates):
+        print(f"\nGenerating replicate {rep_index + 1}/{n_replicates} (index {rep_index})")
+        replicate_blocks = []
 
-        # Add the price column (same as ratio)
-        block_df[price_col_name] = block_df['ratio']
+        for block_index in range(block_count):
+            block_df = generate_block(
+                repIndex=rep_index,
+                blockIndex=block_index,
+                df=df,
+                block_size=block_size
+            )
+            # Add the price column (same as ratio)
+            block_df[price_col_name] = block_df['ratio']
+            # Final column order
+            final_block = block_df[['replicate_index', 'block_index', 'date', price_col_name, 'change_pct']]
+            replicate_blocks.append(final_block)
 
-        # Final column order
-        final_block = block_df[['replicate_index', 'block_index', 'date', price_col_name, 'change_pct']]
+            if block_index == 0:  # Only print once per replicate to reduce spam
+                first_date = block_df['date'].iloc[0]
+                print(f"  Block {block_index + 1}/{block_count} starting at {first_date}")
 
-        all_blocks.append(final_block)
+        # Combine blocks for this replicate
+        replicate_df = pd.concat(replicate_blocks, ignore_index=True)
+        all_replicates.append(replicate_df)
 
-        first_date = block_df['date'].iloc[0]
-        print(f"Generated block {block_index + 1}/{block_count}.. starting at {first_date}")
-
-    # Combine all blocks into one replicate
-    replicate_df = pd.concat(all_blocks, ignore_index=True)
+    # Combine all replicates into one big DataFrame
+    full_df = pd.concat(all_replicates, ignore_index=True)
 
     # Save to CSV
-    replicate_df.to_csv(output_file, index=False)
-    print(f"\nReplicate saved to: {os.path.abspath(output_file)}")
-    print(f"Total rows in replicate: {len(replicate_df)}")
-    print("Columns:", list(replicate_df.columns))
+    full_df.to_csv(output_file, index=False)
+
+    print(f"\nAll {n_replicates} replicates saved to: {os.path.abspath(output_file)}")
+    print(f"Total rows in file: {len(full_df)}")
+    print(f"Rows per replicate: {len(full_df) // n_replicates}")
+    print("Columns:", list(full_df.columns))
