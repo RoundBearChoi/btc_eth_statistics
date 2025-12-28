@@ -39,7 +39,7 @@ def generate_replicates(asset1: str, asset2: str, n_replicates: int = 10) -> Non
     if missing:
         raise ValueError(f"Missing expected columns: {missing}")
 
-    print(f"Loaded {len(df)} rows from {os.path.abspath(input_path)}")
+    print(f"loaded {len(df)} rows from {os.path.abspath(input_path)}")
 
     # Output setup
     price_col_name = f'{asset1}_{asset2}_price'
@@ -52,15 +52,14 @@ def generate_replicates(asset1: str, asset2: str, n_replicates: int = 10) -> Non
     block_size = round(math.sqrt(total_rows))
     block_count = math.ceil(total_rows / block_size)
 
-    print(f"Total rows: {total_rows}")
-    print(f"Block size: {block_size}")
-    print(f"Number of blocks per replicate: {block_count}")
-    print(f"Generating {n_replicates} replicates...")
+    print(f"total rows: {total_rows}")
+    print(f"block size: {block_size}")
+    print(f"number of blocks per replicate: {block_count}")
 
     all_replicates = []
 
     for rep_index in range(n_replicates):
-        print(f"\nGenerating replicate {rep_index + 1}/{n_replicates} (index {rep_index})")
+        #print(f"\ngenerating replicate {rep_index + 1}/{n_replicates}")
         replicate_blocks = []
 
         for block_index in range(block_count):
@@ -76,9 +75,8 @@ def generate_replicates(asset1: str, asset2: str, n_replicates: int = 10) -> Non
             final_block = block_df[['replicate_index', 'block_index', 'date', price_col_name, 'change_pct']]
             replicate_blocks.append(final_block)
 
-            if block_index == 0:  # Only print once per replicate to reduce spam
-                first_date = block_df['date'].iloc[0]
-                print(f"  Block {block_index + 1}/{block_count} starting at {first_date}")
+            #first_date = block_df['date'].iloc[0]
+            #print(f"  Block {block_index + 1}/{block_count} starting at {first_date}")
 
         # Combine blocks for this replicate
         replicate_df = pd.concat(replicate_blocks, ignore_index=True)
@@ -90,7 +88,6 @@ def generate_replicates(asset1: str, asset2: str, n_replicates: int = 10) -> Non
     # Save to CSV
     full_df.to_csv(output_file, index=False)
 
-    print(f"\nAll {n_replicates} replicates saved to: {os.path.abspath(output_file)}")
-    print(f"Total rows in file: {len(full_df)}")
-    print(f"Rows per replicate: {len(full_df) // n_replicates}")
-    print("Columns:", list(full_df.columns))
+    print(f"\n{n_replicates} replicates saved to: {os.path.abspath(output_file)}")
+    print(f"total rows in file: {len(full_df)}")
+    print(f"rows per replicate: {len(full_df) // n_replicates}")
