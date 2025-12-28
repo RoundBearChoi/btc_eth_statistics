@@ -39,16 +39,15 @@ def generate_replicates(asset1: str, asset2: str) -> None:
 def generate_block(blockIndex: int, df: pd.DataFrame) -> None:
     totalRows = len(df)
     heuristics = round(math.sqrt(totalRows))
-    print(f"total rows: {totalRows}.. heuristics: {heuristics}..")
 
-    print(f"\nblock {blockIndex}")
     rng = np.random.default_rng()
     randInt = rng.integers(0, totalRows)
 
+    print("")
     print(f"generated randInt between 0 to {totalRows}: {randInt}")
 
     for i in range(heuristics):
         idx = (randInt + i) % totalRows  # modular arithmetic handles the wrap-around
         row_str = ', '.join(df.iloc[idx].astype(str))
-        print(f"Index {idx}: {row_str}")
+        print(f"block {blockIndex}, index {idx}, {row_str}")
 
