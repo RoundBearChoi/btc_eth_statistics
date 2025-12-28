@@ -52,9 +52,6 @@ def generate_block(repIndex: int, blockIndex: int, df: pd.DataFrame) -> pd.DataF
     rng = np.random.default_rng()
     randInt = rng.integers(0, totalRows)  # starting row index (0 to totalRows-1)
     
-    #print("")
-    #print(f"generated randInt between 0 to {totalRows-1}: {randInt}")
-    
     # Compute the wrapped indices
     indices = [(randInt + i) % totalRows for i in range(heuristics)]
     
