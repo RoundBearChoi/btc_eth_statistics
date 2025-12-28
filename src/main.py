@@ -9,4 +9,4 @@ if __name__ == "__main__":
 
     generate_price_change('BTC', 'ETH')
 
-    generate_replicates('BTC', 'ETH')
+    generate_replicates('BTC', 'ETH', 100)

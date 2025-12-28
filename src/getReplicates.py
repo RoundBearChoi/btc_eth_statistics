@@ -55,6 +55,7 @@ def generate_replicates(asset1: str, asset2: str, n_replicates: int = 10) -> Non
     print(f"total rows: {total_rows}")
     print(f"block size: {block_size}")
     print(f"number of blocks per replicate: {block_count}")
+    print(f"total replicates: {n_replicates}")
 
     all_replicates = []
 
