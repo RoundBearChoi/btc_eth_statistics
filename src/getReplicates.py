@@ -2,6 +2,7 @@ import os
 import pandas as pd
 import math
 import numpy as np
+from sortReplicates import analyze
 
 def generate_block(repIndex: int, blockIndex: int, df: pd.DataFrame, block_size: int) -> pd.DataFrame:
     """
@@ -92,3 +93,5 @@ def generate_replicates(asset1: str, asset2: str, n_replicates: int = 10) -> Non
     print(f"\n{n_replicates} replicates saved to: {os.path.abspath(output_file)}")
     print(f"total rows in file: {len(full_df)}")
     print(f"rows per replicate: {len(full_df) // n_replicates}")
+
+    analyze(asset1, asset2)
