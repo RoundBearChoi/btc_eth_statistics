@@ -103,13 +103,13 @@ def analyze(asset1: str, asset2: str) -> None:
         lower_percentile=0.0,
         upper_percentile=5.0
     )
-    print(f"\nMedian of pooled 0–5th percentile change_pct: {bottom_median:.4f}")
+    print(f"\nmedian of pooled 0–5th percentile change_pct: {bottom_median:.4f}")
 
     percentile_file = f"{asset1}_{asset2}_replicates_0_5_percentiles.csv"
     percentile_path = os.path.join(data_dir, percentile_file)
     bottom_df.to_csv(percentile_path, index=False)
     print(f"0–5th percentile data saved to: {os.path.abspath(percentile_path)}")
-    print(f"Rows in 0–5th percentile file: {len(bottom_df)}")
+    print(f"rows in 0–5th percentile file: {len(bottom_df)}")
 
     # 95–100th percentile (top 5%)
     top_df, top_median = get_percentile_data(
@@ -118,13 +118,13 @@ def analyze(asset1: str, asset2: str) -> None:
         lower_percentile=95.0,
         upper_percentile=100.0
     )
-    print(f"\nMedian of pooled 95–100th percentile change_pct: {top_median:.4f}")
+    print(f"\nmedian of pooled 95–100th percentile change_pct: {top_median:.4f}")
 
     top_file = f"{asset1}_{asset2}_replicates_95_100_percentiles.csv"
     top_path = os.path.join(data_dir, top_file)
     top_df.to_csv(top_path, index=False)
     print(f"95–100th percentile data saved to: {os.path.abspath(top_path)}")
-    print(f"Rows in 95–100th percentile file: {len(top_df)}")
+    print(f"rows in 95–100th percentile file: {len(top_df)}")
 
 
 if __name__ == "__main__":

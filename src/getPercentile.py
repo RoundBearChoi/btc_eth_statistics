@@ -3,6 +3,7 @@
 import os
 import pandas as pd
 import matplotlib.pyplot as plt
+import datetime
 
 def showPercentileGraph(asset1: str, asset2: str) -> None:
     print("")
@@ -58,7 +59,17 @@ def showPercentileGraph(asset1: str, asset2: str) -> None:
     plt.ylabel('Price Change %', fontsize=12)
     plt.axhline(0, color='black', linewidth=1)
     plt.grid(axis='y', linestyle='--', alpha=0.7)
+
+    # get current date and time
+    current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
     
+    # title with current date/time
+    plt.title(f'{asset1.upper()} vs {asset2.upper()} - Daily Price Change % - {current_time}', fontsize=15)
+    
+    plt.ylabel('Price Change %', fontsize=12)
+    plt.axhline(0, color='black', linewidth=1)
+    plt.grid(axis='y', linestyle='--', alpha=0.7)
+
     # add percentile lines
     p5 = df_sorted['change_pct'].quantile(0.05)
     p95 = df_sorted['change_pct'].quantile(0.95)
@@ -79,4 +90,4 @@ def showPercentileGraph(asset1: str, asset2: str) -> None:
     graph_path = os.path.join(dataDir, graph_file)
     plt.savefig(graph_path)
     print(f"\nbar graph saved to: {os.path.abspath(graph_path)}")
-    plt.show()
+    plt.show(block=False)

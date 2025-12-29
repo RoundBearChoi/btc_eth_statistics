@@ -57,7 +57,6 @@ def generate_replicates(asset1: str, asset2: str, n_replicates: int = 10) -> Non
     print(f"block size: {block_size}")
     print(f"number of blocks per replicate: {block_count}")
     print(f"total replicates: {n_replicates}")
-    print("")
 
     all_replicates = []
 
@@ -96,3 +95,7 @@ def generate_replicates(asset1: str, asset2: str, n_replicates: int = 10) -> Non
     print(f"rows per replicate: {len(full_df) // n_replicates}")
 
     analyze(asset1, asset2)
+
+
+if __name__ == '__main__':
+    generate_replicates('btc', 'eth', 10)
