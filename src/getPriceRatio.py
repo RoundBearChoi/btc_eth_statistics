@@ -1,10 +1,10 @@
 # src/getPriceRatio.py
 
 from datetime import date
+from getHistoricClosing import fetch_crypto_daily_closing
 import pandas as pd
 import os
 
-from getHistoricClosing import fetch_crypto_daily_closing
 
 # Cache for loaded data: key = (asset1, asset2)
 _combined_cache = {}

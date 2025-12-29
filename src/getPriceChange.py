@@ -6,7 +6,6 @@ from getPriceRatio import createPriceFile
 from getPercentile import showPercentileGraph
 
 def generate_price_change(asset1: str, asset2: str) -> None:
-
     createPriceFile(asset1.upper(), asset2.upper())
     # Define paths relative to this script's location
     script_dir = os.path.dirname(os.path.abspath(__file__))
