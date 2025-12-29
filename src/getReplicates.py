@@ -57,11 +57,12 @@ def generate_replicates(asset1: str, asset2: str, n_replicates: int = 10) -> Non
     print(f"block size: {block_size}")
     print(f"number of blocks per replicate: {block_count}")
     print(f"total replicates: {n_replicates}")
+    print("")
 
     all_replicates = []
 
     for rep_index in range(n_replicates):
-        #print(f"\ngenerating replicate {rep_index + 1}/{n_replicates}")
+        #print(f"generating replicate {rep_index + 1}/{n_replicates}")
         replicate_blocks = []
 
         for block_index in range(block_count):
@@ -78,7 +79,7 @@ def generate_replicates(asset1: str, asset2: str, n_replicates: int = 10) -> Non
             replicate_blocks.append(final_block)
 
             #first_date = block_df['date'].iloc[0]
-            #print(f"  Block {block_index + 1}/{block_count} starting at {first_date}")
+            #print(f"block {block_index + 1}/{block_count} starting at {first_date}")
 
         # Combine blocks for this replicate
         replicate_df = pd.concat(replicate_blocks, ignore_index=True)
