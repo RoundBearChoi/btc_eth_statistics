@@ -128,5 +128,4 @@ def analyze(asset1: str, asset2: str) -> None:
 
 
 if __name__ == "__main__":
-    # Example usage
     analyze("btc", "eth")
