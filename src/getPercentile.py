@@ -5,7 +5,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import datetime
 
-def showPercentileGraph(asset1: str, asset2: str) -> None:
+def showPercentileGraph(asset1: str, asset2: str, blockOnGraph: bool = False) -> None:
     print("")
     print(" --- generating percentile file --- ")
    
@@ -90,4 +90,8 @@ def showPercentileGraph(asset1: str, asset2: str) -> None:
     graph_path = os.path.join(dataDir, graph_file)
     plt.savefig(graph_path)
     print(f"\nbar graph saved to: {os.path.abspath(graph_path)}")
-    plt.show(block=False)
+    plt.show(block=blockOnGraph)
+
+
+if __name__ == '__main__':
+    showPercentileGraph('btc', 'eth', True)
