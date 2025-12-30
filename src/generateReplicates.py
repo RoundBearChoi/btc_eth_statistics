@@ -1,4 +1,3 @@
-import os
 import pandas as pd
 import math
 import numpy as np
@@ -32,31 +31,9 @@ def generate_replicates(asset1: str, asset2: str, n_replicates: int = 10) -> Non
     
     df = _load(f'{asset1}_{asset2}_price_change.csv', ['date', 'ratio', 'change_pct'])
 
-    '''
-    scriptDir = os.path.dirname(os.path.abspath(__file__))
-    dataDir = os.path.join(scriptDir, '..', 'data')
-    asset1 = asset1.lower()
-    asset2 = asset2.lower()
-    input_file = f"{asset1}_{asset2}_price_change.csv"
-    input_path = os.path.join(dataDir, input_file)
-
-    if not os.path.exists(input_path):
-        raise FileNotFoundError(f"File not found: {input_path}")
-
-    df = pd.read_csv(input_path)
-    expectedCols = ['date', 'ratio', 'change_pct']
-    missing = [col for col in expectedCols if col not in df.columns]
-    if missing:
-        raise ValueError(f"Missing expected columns: {missing}")
-
-    print(f"loaded {len(df)} rows from {os.path.abspath(input_path)}")
-    '''
-
     # Output setup
     price_col_name = f'{asset1}_{asset2}_price'
     #fieldnames = ['replicate_index', 'block_index', 'date', price_col_name, 'change_pct']
-
-    #output_file = os.path.join(dataDir, f'{asset1}_{asset2}_replicates.csv')
 
     # block parameters
     total_rows = len(df)
