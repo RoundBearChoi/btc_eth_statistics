@@ -4,7 +4,6 @@ import os
 import pandas as pd
 import matplotlib.pyplot as plt
 import datetime
-
 from loadCSV import load_from_file as _load
 from loadCSV import get_data_dir as _getDataDir
 
