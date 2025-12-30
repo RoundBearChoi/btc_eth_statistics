@@ -9,6 +9,7 @@ from drawGraphOnHistoricPrice import draw_graph
 from generateReplicates import generate_replicates
 from sortReplicates import sort_reps
 from getUpperLower import get_upper_lower
+from sortSummary import sort_upper_lower
 
 
 def get_stats(asset1: str, asset2: str) -> None:
@@ -32,6 +33,8 @@ def get_stats(asset1: str, asset2: str) -> None:
     sort_reps(asset1, asset2)
 
     get_upper_lower(asset1, asset2)
+
+    sort_upper_lower(asset1, asset2)
 
 
 if __name__ == '__main__':
