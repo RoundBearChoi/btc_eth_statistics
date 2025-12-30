@@ -6,18 +6,11 @@ import os
 from datetime import datetime, timedelta
 
 
-def download_crypto_daily_closing(
-    crypto_symbol: str,
-    fiat_symbol: str = 'usd',
-    years: int = 2,
-    filename: str = None
-) -> None:
-    if filename is None:
-        filename = f"{crypto_symbol.lower()}_daily_closing_{years}years.csv"
-   
-    if not filename.lower().endswith('.csv'):
-        filename += '.csv'
-
+def download_crypto_daily_closing(crypto_symbol: str, fiat_symbol: str = 'usd', years: int = 2) -> None:
+    print("")
+    print(f" --- downloading {crypto_symbol}/{fiat_symbol} data from cryptocompare ---")
+    
+    filename = f"{crypto_symbol.lower()}_daily_closing_{years}years.csv"
     url = "https://min-api.cryptocompare.com/data/v2/histoday"
    
     params = {
@@ -25,8 +18,6 @@ def download_crypto_daily_closing(
         'tsym': fiat_symbol.upper(),
         'allData': 'true'
     }
-    print("")
-    print(f" --- downloading {crypto_symbol}/{fiat_symbol} data from cryptocompare ---")
    
     try:
         response = requests.get(url, params=params)
