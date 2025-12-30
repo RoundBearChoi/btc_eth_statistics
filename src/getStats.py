@@ -5,6 +5,7 @@ from downloadPriceData import download_crypto_daily_closing
 from getPriceRatio import get_price_ratio 
 from getPriceChange import get_price_change
 from sortHistoricPrice import sort_historic_price
+from drawGraphOnHistoricPrice import draw_graph
 
 
 def get_stats(asset1: str, asset2: str) -> None:
@@ -20,6 +21,8 @@ def get_stats(asset1: str, asset2: str) -> None:
     get_price_change(asset1, asset2)
     
     sort_historic_price(asset1, asset2)
+
+    draw_graph(asset1, asset2)
 
 
 if __name__ == '__main__':

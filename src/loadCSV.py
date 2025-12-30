@@ -4,9 +4,15 @@ import os
 import pandas as pd
 
 
-def load_from_file(fileName: str, expectedCols: list[str]) -> pd.DataFrame:
+def get_data_dir() -> str:
     scriptDir = os.path.dirname(os.path.abspath(__file__))
     dataDir = os.path.join(scriptDir, '..', 'data')
+
+    return os.path.abspath(dataDir)
+
+
+def load_from_file(fileName: str, expectedCols: list[str]) -> pd.DataFrame:
+    dataDir = get_data_dir()
     filePath = os.path.join(dataDir, fileName)
     filePath = os.path.abspath(filePath)
 
