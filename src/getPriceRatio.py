@@ -1,9 +1,6 @@
 #getPriceRatio.py
 
 import pandas as pd
-import os
-from datetime import date
-from downloadPriceData import download_crypto_daily_closing
 from loadCSV import load_from_file as _load
 from saveCSV import save_to_file as _save
 
