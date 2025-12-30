@@ -5,6 +5,7 @@ import csv
 import os
 import pandas as pd
 from loadCSV import load_from_file as _load
+from saveCSV import save_to_file as _save
 from datetime import datetime, timedelta, timezone
 
 
@@ -81,31 +82,16 @@ def download_crypto_daily_closing(crypto_symbol: str, fiat_symbol: str = 'usd', 
     print(f'fetched {len(daily_data)} total daily points')
     print(f'filtered to {len(recent_data)} points for the last ~{years} years')
 
-    # build path to parallel /data folder
-    # get the directory where this script is located (more reliable than cwd)
-    script_dir = os.path.dirname(os.path.abspath(__file__))  # directory of the current script
-    data_dir = os.path.join(script_dir, '..', 'data')
+    # convert to DataFrame and save to file
+    rows = []
+    for entry in recent_data:
+        date_str = datetime.fromtimestamp(entry['time']).strftime('%Y-%m-%d')
+        price = entry['close']
+        rows.append({'date': date_str, f'{crypto_symbol.lower()}_closing_price_usd': price})
 
-    # create the data directory if it doesn't exist
-    os.makedirs(data_dir, exist_ok=True)
+    df = pd.DataFrame(rows)
 
-    # full path for the CSV file inside the data folder
-    csv_filepath = os.path.join(data_dir, fileName)
-    csv_filepath = csv_filepath.lower()
-
-    # write to CSV
-    with open(csv_filepath, 'w', newline='') as csvfile:
-        writer = csv.writer(csvfile)
-        writer.writerow(['date', f'{crypto_symbol.lower()}_closing_price_{fiat_symbol.lower()}'])
-        
-        for entry in recent_data:
-            date_str = datetime.fromtimestamp(entry['time']).strftime('%Y-%m-%d')
-            closing_price = entry['close']
-            writer.writerow([date_str, closing_price])
-
-    # get absolute path for printing
-    full_path = os.path.abspath(csv_filepath)
-    print(f"data saved to: {full_path}")
+    _save(df, fileName)
 
 
 if __name__ == '__main__':
