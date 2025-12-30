@@ -38,6 +38,7 @@ def download_crypto_daily_closing(crypto_symbol: str, fiat_symbol: str = 'usd', 
     fileName = f'{crypto_symbol.lower()}_daily_closing_{years}years.csv'
   
     if not download_new_file(fileName, crypto_symbol):
+        # skip download if existing data is good
         return
     
     params = {
@@ -72,7 +73,7 @@ def download_crypto_daily_closing(crypto_symbol: str, fiat_symbol: str = 'usd', 
     cutoff_time = int((datetime.now() - timedelta(days=cutoff_days)).timestamp())
     recent_data = [entry for entry in daily_data if entry['time'] >= cutoff_time]
 
-    # get latest entry
+    # get latest entry (just to print)
     latest_entry = daily_data[-1]
     latest_date = datetime.fromtimestamp(latest_entry['time']).strftime('%Y-%m-%d')
     latest_price = latest_entry['close']

@@ -1,4 +1,5 @@
 # saveCSV.py
+
 import os
 import pandas as pd
 from typing import Optional
@@ -10,11 +11,6 @@ def save_to_file(
     encoding: str = 'utf-8',
     **kwargs
 ) -> None:
-    """
-        encoding (str, optional): File encoding. Defaults to 'utf-8'.
-        **kwargs: Additional arguments to pass to pd.DataFrame.to_csv().
-    """
-
     # Get the directory where this script is located
     scriptDir = os.path.dirname(os.path.abspath(__file__))
     
