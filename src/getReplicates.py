@@ -5,20 +5,22 @@ import numpy as np
 from sortReplicates import sort_reps
 
 def generate_block(repIndex: int, blockIndex: int, df: pd.DataFrame, block_size: int) -> pd.DataFrame:
-    """
-    Generate a random wrapped block of rows from the DataFrame.
-    """
+    # generate a random wrapped block of rows from the DataFrame.
     totalRows = len(df)
     rng = np.random.default_rng()
     randInt = rng.integers(0, totalRows)  # random starting row
-    # Wrapped indices
+    
+    # wrapped indices
     indices = [(randInt + i) % totalRows for i in range(block_size)]
-    # Select rows: date, ratio, change_pct
+    
+    # select rows: date, ratio, change_pct
     selected = df.iloc[indices, [0, 1, 2]].copy().reset_index(drop=True)
     selected.columns = ['date', 'ratio', 'change_pct']
-    # Add replicate and block info
+    
+    # add replicate and block info
     selected.insert(0, 'replicate_index', repIndex)
     selected.insert(1, 'block_index', blockIndex)
+    
     return selected
 
 def generate_replicates(asset1: str, asset2: str, n_replicates: int = 10) -> None:
