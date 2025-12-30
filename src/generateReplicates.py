@@ -2,7 +2,9 @@ import os
 import pandas as pd
 import math
 import numpy as np
-from sortReplicates import sort_reps
+from loadCSV import load_from_file as _load
+from saveCSV import save_to_file as _save
+
 
 def generate_block(repIndex: int, blockIndex: int, df: pd.DataFrame, block_size: int) -> pd.DataFrame:
     # generate a random wrapped block of rows from the DataFrame.
@@ -23,9 +25,14 @@ def generate_block(repIndex: int, blockIndex: int, df: pd.DataFrame, block_size:
     
     return selected
 
+
 def generate_replicates(asset1: str, asset2: str, n_replicates: int = 10) -> None:
     print("")
     print(" --- generating replicates ---")
+    
+    df = _load(f'{asset1}_{asset2}_price_change.csv', ['date', 'ratio', 'change_pct'])
+
+    '''
     scriptDir = os.path.dirname(os.path.abspath(__file__))
     dataDir = os.path.join(scriptDir, '..', 'data')
     asset1 = asset1.lower()
@@ -43,14 +50,15 @@ def generate_replicates(asset1: str, asset2: str, n_replicates: int = 10) -> Non
         raise ValueError(f"Missing expected columns: {missing}")
 
     print(f"loaded {len(df)} rows from {os.path.abspath(input_path)}")
+    '''
 
     # Output setup
     price_col_name = f'{asset1}_{asset2}_price'
-    fieldnames = ['replicate_index', 'block_index', 'date', price_col_name, 'change_pct']
+    #fieldnames = ['replicate_index', 'block_index', 'date', price_col_name, 'change_pct']
 
-    output_file = os.path.join(dataDir, f'{asset1}_{asset2}_replicates.csv')
+    #output_file = os.path.join(dataDir, f'{asset1}_{asset2}_replicates.csv')
 
-    # Block parameters
+    # block parameters
     total_rows = len(df)
     block_size = round(math.sqrt(total_rows))
     block_count = math.ceil(total_rows / block_size)
@@ -73,30 +81,26 @@ def generate_replicates(asset1: str, asset2: str, n_replicates: int = 10) -> Non
                 df=df,
                 block_size=block_size
             )
-            # Add the price column (same as ratio)
+            # add the price column (same as ratio)
             block_df[price_col_name] = block_df['ratio']
-            # Final column order
+            # final column order
             final_block = block_df[['replicate_index', 'block_index', 'date', price_col_name, 'change_pct']]
             replicate_blocks.append(final_block)
 
             #first_date = block_df['date'].iloc[0]
             #print(f"block {block_index + 1}/{block_count} starting at {first_date}")
 
-        # Combine blocks for this replicate
+        # combine blocks for this replicate
         replicate_df = pd.concat(replicate_blocks, ignore_index=True)
         all_replicates.append(replicate_df)
 
-    # Combine all replicates into one big DataFrame
+    # combine all replicates and save
     full_df = pd.concat(all_replicates, ignore_index=True)
 
-    # Save to CSV
-    full_df.to_csv(output_file, index=False)
-
-    print(f"\n{n_replicates} replicates saved to: {os.path.abspath(output_file)}")
     print(f"total rows in file: {len(full_df)}")
     print(f"rows per replicate: {len(full_df) // n_replicates}")
-
-    sort_reps(asset1, asset2)
+    
+    _save(full_df, f'{asset1}_{asset2}_replicates.csv')
 
 
 if __name__ == '__main__':
