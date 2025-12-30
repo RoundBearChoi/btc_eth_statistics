@@ -1,44 +1,22 @@
 #getPriceRatio.py
 
-from datetime import date
-from downloadPriceData import download_crypto_daily_closing
 import pandas as pd
 import os
-
-
-# Cache for loaded data: key = (asset1, asset2)
-_combined_cache = {}
-_price_csv_template = '{}_{}_price.csv'  # e.g., btc_eth_price.csv
+from datetime import date
+from downloadPriceData import download_crypto_daily_closing
+from loadCSV import load_from_file as _load
+from saveCSV import save_to_file as _save
 
 
 def get_price_ratio(asset1='btc', asset2='eth'):
-    asset1_lower = asset1.lower()
-    asset2_lower = asset2.lower()
-    cache_key = (asset1_lower, asset2_lower)
+    asset1 = asset1.lower()
+    asset2 = asset2.lower()
     
-    if cache_key in _combined_cache:
-        return _combined_cache[cache_key]
-    
-    file1 = f'{asset1_lower}_daily_closing_2years.csv'
-    file2 = f'{asset2_lower}_daily_closing_2years.csv'
-    
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    data_dir = os.path.join(script_dir, '..', 'data')
-    
-    file1 = os.path.join(data_dir, file1)
-    file2 = os.path.join(data_dir, file2)
-
     print("")
     print(f" --- calculating {asset1}/{asset2} price ratio ---")
-    
-    if not os.path.exists(file1):
-        raise FileNotFoundError(f"{asset1} file not found: {file1}")
-    if not os.path.exists(file2):
-        raise FileNotFoundError(f"{asset2} file not found: {file2}")
-    
-    # Read CSV files
-    df1 = pd.read_csv(file1)
-    df2 = pd.read_csv(file2)
+
+    df1 = _load(f'{asset1}_daily_closing_2years.csv', ['date', f'{asset1}_closing_price_usd'])
+    df2 = _load(f'{asset2}_daily_closing_2years.csv', ['date', f'{asset2}_closing_price_usd'])
    
     print('')
     print(df1)
@@ -60,30 +38,20 @@ def get_price_ratio(asset1='btc', asset2='eth'):
     
     # combine with inner join (only common dates)
     combined = pd.concat([price_series1, price_series2], axis=1, join='inner')
-   
-    #print('')
-    #print(combined)
 
-    combined.columns = [asset1_lower, asset2_lower]
+    # rename the columns to the assets for clarity (removes the longer original names)
+    combined.columns = [asset1, asset2]
     
     # calculate price ratio
-    combined['ratio'] = combined[asset1_lower] / combined[asset2_lower]
+    combined['ratio'] = combined[asset1] / combined[asset2]
 
     # save to CSV
-    result_df = combined.reset_index()[['date', asset1_lower, asset2_lower, 'ratio']]
+    result_df = combined.reset_index()[['date', asset1, asset2, 'ratio']]
 
     print('')
     print(result_df)
 
-    output_csv = _price_csv_template.format(asset1_lower, asset2_lower)
-  
-    # change path to ../data 
-    output_csv = os.path.join(data_dir, output_csv) 
-
-    result_df.to_csv(output_csv, index=False)
-
-    print('')
-    print(f'daily prices and ratios saved to {os.path.abspath(output_csv)}')
+    _save(result_df, f'{asset1}_{asset2}_price.csv') 
 
 
 if __name__ == '__main__':
