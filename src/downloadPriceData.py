@@ -36,16 +36,14 @@ def download_crypto_daily_closing(crypto_symbol: str, fiat_symbol: str = 'usd', 
 
     # sort just in case (normally already chronological)
     daily_data.sort(key=lambda x: x['time'])
-    
+
     # calculate cutoff for filtering
-    '''
-    get slightly more than requested years, avoiding edge cases where you might miss a few days due to the rough 365-day approximation (leap years, etc.).
-    '''
+    # get slightly more than requested years, avoiding edge cases where you might miss a few days due to the rough 365-day approximation (leap years, etc.).
     cutoff_days = years * 365 + 30
     cutoff_time = int((datetime.now() - timedelta(days=cutoff_days)).timestamp())
     recent_data = [entry for entry in daily_data if entry['time'] >= cutoff_time]
 
-    # get the latest entry (last in the full dataset)
+    # get latest entry
     latest_entry = daily_data[-1]
     latest_date = datetime.fromtimestamp(latest_entry['time']).strftime('%Y-%m-%d')
     latest_price = latest_entry['close']
