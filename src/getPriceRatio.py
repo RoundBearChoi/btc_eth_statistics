@@ -61,8 +61,8 @@ def get_price_ratio(asset1='btc', asset2='eth'):
     # combine with inner join (only common dates)
     combined = pd.concat([price_series1, price_series2], axis=1, join='inner')
    
-    print('')
-    print(combined)
+    #print('')
+    #print(combined)
 
     combined.columns = [asset1_lower, asset2_lower]
     
