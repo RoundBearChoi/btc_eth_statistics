@@ -6,6 +6,8 @@ from getPriceRatio import get_price_ratio
 from getPriceChange import get_price_change
 from sortHistoricPrice import sort_historic_price
 from drawGraphOnHistoricPrice import draw_graph
+from generateReplicates import generate_replicates
+from sortReplicates import sort_reps
 
 
 def get_stats(asset1: str, asset2: str) -> None:
@@ -23,6 +25,10 @@ def get_stats(asset1: str, asset2: str) -> None:
     sort_historic_price(asset1, asset2)
 
     draw_graph(asset1, asset2)
+
+    generate_replicates(asset1, asset2, 10)
+
+    sort_reps(asset1, asset2)
 
 
 if __name__ == '__main__':

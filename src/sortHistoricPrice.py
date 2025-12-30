@@ -1,6 +1,5 @@
 # src/getPercentile.py
 
-import pandas as pd
 from loadCSV import load_from_file as _load
 from saveCSV import save_to_file as _save
 
