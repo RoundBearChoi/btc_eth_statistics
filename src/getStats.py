@@ -1,8 +1,9 @@
 #getStats.py
 
+import time
 from downloadPriceData import download_crypto_daily_closing
 from getPriceRatio import get_price_ratio 
-import time 
+from getPriceChange import get_price_change
 
 
 def get_stats(asset1: str, asset2: str) -> None:
@@ -14,6 +15,8 @@ def get_stats(asset1: str, asset2: str) -> None:
     download_crypto_daily_closing(asset2)
 
     get_price_ratio(asset1, asset2)
+
+    get_price_change(asset1, asset2)
 
 
 if __name__ == '__main__':
