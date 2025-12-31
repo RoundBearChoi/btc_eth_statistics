@@ -54,10 +54,11 @@ def draw_graph(asset1: str, asset2: str) -> None:
              bbox=dict(facecolor='white', alpha=0.8, edgecolor='none', pad=3))
 
     plt.tight_layout()
-    graph_file = f"{asset1}_{asset2}_change_pct_bargraph.png"
-    graph_path = os.path.join(_getDataDir(), graph_file)
-    plt.savefig(graph_path)
-    print(f"\nbar graph saved to: {os.path.abspath(graph_path)}")
+
+    graphPath = os.path.join(_getDataDir(), f'{asset1}_{asset2}_change_pct_bargraph.png')
+    plt.savefig(graphPath)
+    print(f"graph saved to: {os.path.abspath(graphPath)}")
+    
     plt.show(block=False)
 
 

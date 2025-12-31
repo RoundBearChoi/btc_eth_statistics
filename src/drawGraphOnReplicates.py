@@ -1,8 +1,10 @@
 # drawGraphOnReplicates
 
+import os
 import pandas as pd
 import matplotlib.pyplot as plt
 from loadCSV import load_from_file as _load
+from loadCSV import get_data_dir as _getDataDir
 
 
 def draw(asset1: str, asset2: str) -> None:
@@ -36,7 +38,12 @@ def draw(asset1: str, asset2: str) -> None:
     
     plt.legend()
     plt.tight_layout()
-    plt.show()
+    plt.show(block=False)
+
+    graphPath = os.path.join(_getDataDir(), f'{asset1}_{asset2}_lower_5th_percentile_graph.png')
+    plt.savefig(graphPath)
+    print(f"graph saved to: {os.path.abspath(graphPath)}")
+
 
 
 if __name__ == '__main__':
