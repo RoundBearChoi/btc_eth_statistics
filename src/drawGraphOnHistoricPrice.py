@@ -57,6 +57,7 @@ def draw_graph(asset1: str, asset2: str) -> None:
 
     graphPath = os.path.join(_getDataDir(), f'{asset1}_{asset2}_change_pct_bargraph.png')
     plt.savefig(graphPath)
+    print('')
     print(f"graph saved to: {os.path.abspath(graphPath)}")
     
     plt.show(block=False)

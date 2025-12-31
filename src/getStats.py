@@ -10,6 +10,7 @@ from generateReplicates import generate_replicates
 from sortReplicates import sort_reps
 from getUpperLower import get_upper_lower
 from sortSummary import sort_upper_lower
+from drawGraphOnReplicates import draw 
 
 
 def get_stats(asset1: str, asset2: str) -> None:
@@ -35,6 +36,8 @@ def get_stats(asset1: str, asset2: str) -> None:
     get_upper_lower(asset1, asset2)
 
     sort_upper_lower(asset1, asset2)
+
+    draw(asset1, asset2)
 
 
 if __name__ == '__main__':
