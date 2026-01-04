@@ -4,6 +4,6 @@ pip install pandas matplotlib requests
 
 <br>
 
-![original data](https://i.imgur.com/SZ9jfP5.png)
-![lower](https://i.imgur.com/NW3LV24.png)
-![upper](https://i.imgur.com/ObmmywH.png)
+![original data](https://i.imgur.com/5iuhCrT.png)
+![lower](https://i.imgur.com/qS1a5fC.png)
+![upper](https://i.imgur.com/xlRI2LV.png)
