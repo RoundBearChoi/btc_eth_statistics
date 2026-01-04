@@ -46,6 +46,14 @@ def proc_graph(df: pd.DataFrame, graphType: GraphType, asset1: str, asset2: str)
     plt.axhline(y=median_value, color='red', linestyle='--', linewidth=2,
                 label=f'median = {median_value:.6f}')
     
+    # add lines for 2.5th percentile and 97.5th percentile
+    p025 = df[col].quantile(0.025)
+    p975 = df[col].quantile(0.975)
+    plt.axhline(y=p025, color='orange', linestyle=':', linewidth=2,
+                label=f'2.5th pct = {p025:.6f}')
+    plt.axhline(y=p975, color='orange', linestyle=':', linewidth=2,
+                label=f'97.5th pct = {p975:.6f}')   
+    
     # add grid for better readability
     plt.grid(True, axis='y', linestyle=':', alpha=0.7)
     
