@@ -1,5 +1,5 @@
 ```
-pip install pandas matplotlib
+pip install pandas matplotlib requests
 ```
 
 <br>
