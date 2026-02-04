@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 import pandas as pd
 import time
 
+
 # List of assets (symbols lowercase)
 assets = ['cbbtc', 'weth', 'cake']
 
