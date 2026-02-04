@@ -80,11 +80,11 @@ def get_internal_price() -> None:
     print("=== Pool Summary ===")
     print(f"Pair: {base_symbol}/{quote_symbol}")
     print(f"Pool Address: {pool_address.upper()}")
-    print(f"Price: 1 {base_symbol} = {current_price:.8f} {quote_symbol}")
+    print(f"1 {base_symbol} = {current_price:.8f} {quote_symbol}")
     if current_price > 0:
         inverse_price = 1 / current_price
-        print(f" 1 {quote_symbol} = {inverse_price:.10f} {base_symbol}")
- 
+        print(f"1 {quote_symbol} = {inverse_price:.10f} {base_symbol}")
+
     # USD prices if available
     base_usd = float(pool_data.get("base_token_price_usd", 0))
     quote_usd = float(pool_data.get("quote_token_price_usd", 0))
@@ -92,7 +92,8 @@ def get_internal_price() -> None:
         print(f"{base_symbol} USD Price: ${base_usd:,.2f}")
     if quote_usd:
         print(f"{quote_symbol} USD Price: ${quote_usd:,.2f}")
- 
+
+    '''
     # Common financial metrics (fixed liquidity label)
     financial_metrics = {
         "volume_usd_h24": "24h Volume",
@@ -117,6 +118,7 @@ def get_internal_price() -> None:
                     print(f"Price Change ({period_label}): {sign}{pct:.2f}%")
                 except:
                     pass
+    '''
 
     # === ADDITIONAL SECTION: Your wallet balances & rebalancing suggestion ===
     user_address = "0xC6869E01c4A9F3c982D63eEC8A104cA141ECC187"
@@ -150,7 +152,7 @@ def get_internal_price() -> None:
     #print(f"Value: ≈ ${base_value_usd:,.2f} ({base_symbol}) + ${quote_value_usd:,.2f} ({quote_symbol}) + ${native_value_usd:,.2f} (native) = ${total_value_usd:,.2f}")
 
     # Rebalancing (to ≈50/50 USD value using current pool price, ignoring native ETH)
-    print("\n=== Rebalance Suggestion (50/50 USD value between cbBTC and WETH only) ===")
+    print("\n=== Rebalance Suggestion (50/50 USD value between cbBTC and WETH) ===")
     #print("Note: Assumes no price impact/fees. Real swaps on DEX have ~0.01% fee + potential impact.")
     #print("Native ETH is ignored and left untouched.")
 
@@ -169,7 +171,7 @@ def get_internal_price() -> None:
             # Excess WETH → swap half the excess to cbBTC
             swap_weth = diff_quote / 2
             expected_cbbtc = swap_weth / current_price
-            print(f"→ Swap {swap_weth:.10f} {quote_symbol} → {expected_cbbtc:.10f} {base_symbol}")
+            print(f"Swap {swap_weth:.10f} {quote_symbol} → {expected_cbbtc:.10f} {base_symbol}")
 
             post_base = base_balance + expected_cbbtc
             post_quote = effective_quote - swap_weth
@@ -177,7 +179,7 @@ def get_internal_price() -> None:
             # Excess cbBTC → swap half to WETH
             swap_cbbtc = (-diff_quote) / (2 * current_price)
             expected_weth = swap_cbbtc * current_price
-            print(f"→ Swap {swap_cbbtc:.10f} {base_symbol} → {expected_weth:.10f} {quote_symbol}")
+            print(f"Swap {swap_cbbtc:.10f} {base_symbol} → {expected_weth:.10f} {quote_symbol}")
 
             post_base = base_balance - swap_cbbtc
             post_quote = effective_quote + expected_weth
