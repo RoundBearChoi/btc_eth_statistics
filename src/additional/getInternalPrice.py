@@ -1,6 +1,7 @@
 import requests
 from pprint import pprint
 
+
 def get_internal_price() -> None:
     # Pool address (lowercase as required by the API)
     pool_address = "0xc211e1f853a898bd1302385ccde55f33a8c4b3f3"
@@ -93,6 +94,7 @@ def get_internal_price() -> None:
         buys = int(float(pool_data[buys_key]))
         sells = int(float(pool_data[sells_key]))
         print(f"24h Transactions: Buys {buys:,} | Sells {sells:,} | Total {buys + sells:,}")
+
 
 if __name__ == '__main__':
     get_internal_price()
