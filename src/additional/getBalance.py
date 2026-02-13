@@ -71,6 +71,9 @@ def main():
         eth_to_btc = eth_price / btc_price if btc_price != 0 else 0
         btc_equivalent = cbbtc_balance + (eth_balance * eth_to_btc)
 
+        # Calculate total USD value
+        total_usd_value = btc_equivalent * btc_price
+
         # Current date/time
         now = datetime.now()
         date_str = now.strftime('%Y-%m-%d')
@@ -85,7 +88,8 @@ def main():
             f"{btc_eth_ratio:.6f}",
             f"{cbbtc_balance:.8f}",
             f"{eth_balance:.8f}",
-            f"{btc_equivalent:.8f}"
+            f"{btc_equivalent:.8f}",
+            f"{total_usd_value:.2f}"
         ]
 
         # Write to CSV (create with header if new)
@@ -95,7 +99,8 @@ def main():
             if not file_exists:
                 writer.writerow([
                     'date', 'time', 'btc_price', 'eth_price',
-                    'btc_eth_ratio', 'cbbtc_balance', 'eth_balance', 'btc_equivalent'
+                    'btc_eth_ratio', 'cbbtc_balance', 'eth_balance',
+                    'btc_equivalent', 'total_usd_value'
                 ])
             writer.writerow(row)
 
