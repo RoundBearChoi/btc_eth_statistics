@@ -3,6 +3,7 @@ from web3 import Web3
 import csv
 import os
 from datetime import datetime
+import pandas as pd  # Added for nice table printing
 
 # Configuration
 CSV_FILE = 'base-btc-eth.csv'
@@ -105,7 +106,11 @@ def main():
             writer.writerow(row)
 
         print("Data appended to", CSV_FILE)
-        print(row)
+
+        # Load CSV and print the most recent 10 entries (or all if fewer)
+        df = pd.read_csv(CSV_FILE)
+        print("\nRecent entries (up to 10 most recent):")
+        print(df.tail(10).to_string(index=False))
 
     except Exception as e:
         print("Error:", str(e))
