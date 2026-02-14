@@ -1,6 +1,7 @@
 import math
 from web3 import Web3
 
+
 # Uniswap V3 pool details (on BASE chain, not Ethereum mainnet)
 POOL_ADDRESS = "0x8c7080564B5A792A33Ef2FD473fbA6364d5495e5"
 WETH_DECIMALS = 18
@@ -28,6 +29,7 @@ SLOT0_ABI = [
     }
 ]
 
+
 def get_current_price(verbose: bool = True):
     w3 = Web3(Web3.HTTPProvider(RPC_URL))
     if not w3.is_connected():
@@ -51,6 +53,7 @@ def get_current_price(verbose: bool = True):
         print(f"   → This means 1 cbBTC currently costs ~{current_price:.10f} WETH\n")
 
     return current_price
+
 
 def calculate_required_weth(
     current_price: float,
@@ -96,10 +99,9 @@ def calculate_required_weth(
         ratio = required_weth / amount_cbbtc
         print(f"Final ratio for the position:")
         print(f"   1 cbBTC : {required_weth:.10f} WETH")
-        print(f"   → Ratio = {ratio:.10f} WETH per cbBTC provided")
-        print(f"   (This is the exact amount of each token needed to fully use 1 cbBTC in this range when price is inside the bounds.)")
 
     return required_weth
+
 
 # Main execution
 if __name__ == "__main__":
