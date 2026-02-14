@@ -5,6 +5,7 @@ import os
 from datetime import datetime
 import pandas as pd  # Added for nice table printing
 
+
 # Configuration
 CSV_FILE = 'base-btc-eth.csv'
 RPC_URL = 'https://mainnet.base.org'  # Public Base RPC endpoint
@@ -28,6 +29,7 @@ ERC20_ABI = [
     }
 ]
 
+
 def get_prices():
     url = 'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd'
     response = requests.get(url)
@@ -36,15 +38,18 @@ def get_prices():
     data = response.json()
     return data['bitcoin']['usd'], data['ethereum']['usd']
 
+
 def get_cbbtc_balance(w3, wallet_address):
     contract = w3.eth.contract(address=Web3.to_checksum_address(CBBTC_ADDRESS), abi=ERC20_ABI)
     decimals = contract.functions.decimals().call()
     raw_balance = contract.functions.balanceOf(Web3.to_checksum_address(wallet_address)).call()
     return raw_balance / (10 ** decimals)
 
+
 def get_native_eth_balance(w3, wallet_address):
     raw_balance = w3.eth.get_balance(Web3.to_checksum_address(wallet_address))
     return raw_balance / 1e18
+
 
 def main():
     # Ask for wallet address
@@ -119,6 +124,7 @@ def main():
 
     except Exception as e:
         print("Error:", str(e))
+
 
 if __name__ == '__main__':
     main()
