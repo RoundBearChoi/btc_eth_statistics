@@ -124,7 +124,7 @@ def procCSV():
         print("\nRecent entries (up to 10 most recent):")
         print(df.tail(10).to_string(index=False))
 
-        return f"{cbbtc_balance:.8f}", f"{eth_balance:.8f}"
+        return cbbtc_balance, eth_balance
 
     except Exception as e:
         print("Error:", str(e))
@@ -132,5 +132,3 @@ def procCSV():
 
 if __name__ == '__main__':
     cbbtc_balance, eth_balance = procCSV()
-    #print(cbbtc_balance)
-    #print(eth_balance)
