@@ -56,6 +56,7 @@ def get_native_eth_balance(w3, wallet_address):
 def procCSV():
     # Ask for wallet address
     wallet_address = input("What's base address? ").strip()
+
     if not Web3.is_address(wallet_address):
         print("Invalid Ethereum address. Please try again.")
         return
@@ -116,7 +117,8 @@ def procCSV():
                     'btc_equivalent', 'total_usd_value'
                 ])
             writer.writerow(row)
-
+        
+        print('')
         print("Data appended to", CSV_FILE)
 
         # Load CSV and print the most recent 10 entries (or all if fewer)
