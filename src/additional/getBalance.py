@@ -68,6 +68,9 @@ def main():
         cbbtc_balance = get_cbbtc_balance(w3, wallet_address)
         eth_balance = get_native_eth_balance(w3, wallet_address)
 
+        # Internal ratio: ETH amount divided by cbBTC amount
+        internal_ratio = eth_balance / cbbtc_balance if cbbtc_balance != 0 else 0.0
+
         # Calculate BTC equivalent: cbBTC (already BTC) + native ETH converted to BTC
         eth_to_btc = eth_price / btc_price if btc_price != 0 else 0
         btc_equivalent = cbbtc_balance + (eth_balance * eth_to_btc)
@@ -89,6 +92,7 @@ def main():
             f"{btc_eth_ratio:.6f}",
             f"{cbbtc_balance:.8f}",
             f"{eth_balance:.8f}",
+            f"{internal_ratio:.8f}",      # New column
             f"{btc_equivalent:.8f}",
             f"{total_usd_value:.2f}"
         ]
@@ -101,6 +105,7 @@ def main():
                 writer.writerow([
                     'date', 'time', 'btc_price', 'eth_price',
                     'btc_eth_ratio', 'cbbtc_balance', 'eth_balance',
+                    'internal_ratio',          # New header
                     'btc_equivalent', 'total_usd_value'
                 ])
             writer.writerow(row)
