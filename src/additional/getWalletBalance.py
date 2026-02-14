@@ -53,7 +53,7 @@ def get_native_eth_balance(w3, wallet_address):
     return raw_balance / 1e18
 
 
-def main():
+def procCSV():
     # Ask for wallet address
     wallet_address = input("What's base address? ").strip()
     if not Web3.is_address(wallet_address):
@@ -124,9 +124,13 @@ def main():
         print("\nRecent entries (up to 10 most recent):")
         print(df.tail(10).to_string(index=False))
 
+        return f"{cbbtc_balance:.8f}", f"{eth_balance:.8f}"
+
     except Exception as e:
         print("Error:", str(e))
 
 
 if __name__ == '__main__':
-    main()
+    cbbtc_balance, eth_balance = procCSV()
+    #print(cbbtc_balance)
+    #print(eth_balance)
