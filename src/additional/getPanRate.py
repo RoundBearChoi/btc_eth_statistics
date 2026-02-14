@@ -61,6 +61,7 @@ def get_cbbtc_eth_rate_pancakeswap() -> Tuple[Optional[float], Optional[float]]:
 # Example usage
 if __name__ == "__main__":
     rate, liquidity = get_cbbtc_eth_rate_pancakeswap()
+
     if rate is not None:
         print("Current realtime rate on PancakeSwap (Base):")
         print(f"1 cbBTC ≈ {rate:.10f} ETH")
