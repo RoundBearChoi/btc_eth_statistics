@@ -113,7 +113,7 @@ def procCSV():
                 writer.writerow([
                     'date', 'time', 'btc_price', 'eth_price',
                     'btc_eth_ratio', 'cbbtc_balance', 'eth_balance',
-                    'internal_ratio',          # New header
+                    'wallet_ratio',
                     'btc_equivalent', 'total_usd_value'
                 ])
             writer.writerow(row)
