@@ -15,9 +15,38 @@ def get_swap_amount():
     print(f'pancakeswap market rate: {market_rate}')
 
     current_price = get_current_price(verbose=False)
-    required_weth = calculate_required_weth(current_price, verbose=False)
+    uniswap_rate = calculate_required_weth(current_price, verbose=False)
 
-    print(f'uniswap pool rate: {required_weth:.8f}')
+    print(f'uniswap pool rate: {uniswap_rate:.8f}')
+
+    eth_equi = to_float(eth_balance) + (to_float(cbbtc_balance) * to_float(market_rate))
+    target_btc_amount = eth_equi / (to_float(market_rate) + to_float(uniswap_rate))
+    target_eth_amount = target_btc_amount * to_float(uniswap_rate)
+    btc_delta = target_btc_amount - to_float(cbbtc_balance)
+    eth_delta = target_eth_amount - eth_balance
+
+    print('')
+    print(f'eth equivalent: {eth_equi:.8f}')
+    print(f'target btc amount: {target_btc_amount:.8f}')
+    print(f'target eth amount: {target_eth_amount:.8f}')
+    print('')
+    print(f'btc_delta: {btc_delta:.8f}')
+    print(f'eth_delta: {eth_delta:.8f}')
+
+
+def to_float(value, default=0.0):
+    if value is None:
+        return default
+    try:
+        return float(value)
+    except (ValueError, TypeError):
+        return default
+
+# Examples
+#print(to_float(None))          # 0.0
+#print(to_float(5))             # 5.0
+#print(to_float("3.14"))        # 3.14
+#print(to_float("invalid"))     # 0.0 (fallback on error)
 
 
 if __name__ == '__main__':
