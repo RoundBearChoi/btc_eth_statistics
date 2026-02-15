@@ -30,7 +30,7 @@ def get_stats(asset1: str, asset2: str) -> None:
 
     draw_graph(asset1, asset2)
 
-    generate_replicates(asset1, asset2, 100)
+    generate_replicates(asset1, asset2, 100000)
 
     sort_reps(asset1, asset2)
 
