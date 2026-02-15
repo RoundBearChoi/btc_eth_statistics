@@ -8,20 +8,31 @@ from datetime import datetime, timedelta, timezone
 
 
 def download_new_file(fileName: str, cryptoSymbol: str) -> bool:
-    existingDF = _load(fileName, ['date',f'{cryptoSymbol.lower()}_closing_price_usd'])
+    existingDF = _load(fileName, ['date', f'{cryptoSymbol.lower()}_closing_price_usd'])
 
     if existingDF.empty:
         print('no existing data.. downloading new data..')
         return True
 
-    latest = existingDF.iloc[-1]['date']
-    latestDate = datetime.fromisoformat(latest).date()
-    print(f'latest entry(utc): {latestDate}')
+    latest_str = existingDF.iloc[-1]['date']
+    latest_date = datetime.strptime(latest_str, '%Y-%m-%d').date()
+    print(f'latest entry date: {latest_date}')
 
-    currentUTC = datetime.now(timezone.utc).date()
-    print(f'current utc: {currentUTC}')
+    now_utc = datetime.now(timezone.utc)
+    current_date_utc = now_utc.date()
+    print(f'current utc date: {current_date_utc}')
+    print(f'current utc time: {now_utc.strftime("%H:%M:%S")} UTC')
 
-    if latestDate < currentUTC:
+    target_hour_utc = 13  # corresponds to 22:00 KST
+
+    if now_utc.hour >= target_hour_utc:
+        expected_latest_date = current_date_utc
+    else:
+        expected_latest_date = current_date_utc - timedelta(days=1)
+
+    print(f'expected latest date (≥ {target_hour_utc}:00 UTC): {expected_latest_date}')
+
+    if latest_date < expected_latest_date:
         print('data is behind.. downloading new data..')
         return True
     else:
