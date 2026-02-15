@@ -1,5 +1,3 @@
-#downloadPriceData.py
-
 import requests
 import csv
 import os
