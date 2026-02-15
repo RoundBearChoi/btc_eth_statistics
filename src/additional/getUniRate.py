@@ -57,8 +57,8 @@ def get_current_price(verbose: bool = True):
 
 def calculate_required_weth(
     current_price: float,
-    lower_pct: float = -0.038,  # -3.8%
-    upper_pct: float = 0.036,   # +3.6%
+    lower_pct: float = -0.04,  # -4%
+    upper_pct: float = 0.04,   # +4%
     amount_cbbtc: float = 1.0,
     verbose: bool = True
 ) -> float:
