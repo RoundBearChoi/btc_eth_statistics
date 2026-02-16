@@ -30,6 +30,18 @@ SLOT0_ABI = [
 ]
 
 
+def get_bounds(prompt: str = 'enter a number: ') -> float:
+    user_input = input(prompt)
+
+    try:
+        number = float(user_input)
+        return abs(number)
+    
+    except ValueError:
+        print('invalid input.. returning 0.0001')
+        return 0.0001
+
+
 def get_current_price(verbose: bool = True):
     w3 = Web3(Web3.HTTPProvider(RPC_URL))
     if not w3.is_connected():
@@ -108,6 +120,9 @@ if __name__ == "__main__":
     try:
         current_price = get_current_price(verbose=True)
        
+        lower_bound = get_bounds('enter lower bound: ')
+        upper_bound = get_bounds('enter upper bound: ')
+
         required_weth = calculate_required_weth(current_price, verbose=True)
        
     except Exception as e:
