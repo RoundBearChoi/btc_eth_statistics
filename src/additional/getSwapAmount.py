@@ -13,8 +13,9 @@ def get_swap_amount():
     market_rate, market_liquidity = get_cbbtc_eth_rate_pancakeswap()
     print(f'pancakeswap market rate: {market_rate}')
 
-    uniswap_rate = get_pool_rate() # calculate_required_weth(current_price, verbose=False)
+    uniswap_rate = get_pool_rate()
 
+    print('')
     print(f'uniswap pool rate: {uniswap_rate:.8f}')
 
     eth_equi = to_float(eth_balance) + (to_float(cbbtc_balance) * to_float(market_rate))

@@ -120,10 +120,11 @@ def calculate_required_weth(
     return required_weth
 
 
-def get_pool_rate() -> float:
+def get_pool_rate(verbose: bool = False) -> float:
     try:
-        current_price = get_current_price(verbose=True)
-       
+        current_price = get_current_price(verbose=verbose)
+      
+        print('')
         lower_bound = get_bounds('enter lower bound: ') * -1
         print(f'lower bound set: {lower_bound}')
         print('')
@@ -133,7 +134,7 @@ def get_pool_rate() -> float:
         required_weth = calculate_required_weth(current_price=current_price,
                                                 lower_pct=lower_bound,
                                                 upper_pct=upper_bound,
-                                                verbose=True)
+                                                verbose=verbose)
 
         return required_weth
        
