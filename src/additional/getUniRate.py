@@ -31,12 +31,15 @@ SLOT0_ABI = [
 
 
 def get_bounds(prompt: str = 'enter a number: ') -> float:
-    user_input = input(prompt)
-
-    try:
-        number = float(user_input)
-        return abs(number)
+    user_input = input(prompt).strip()  # remove leading/trailing whitespace
+    has_percent = '%' in user_input     # check if % was present anywhere
+    cleaned_input = user_input.replace('%', '').strip()  # remove all % symbols
     
+    try:
+        number = float(cleaned_input)
+        if has_percent:
+            number /= 100.0                 # convert percentage to decimal
+        return abs(number)                  # always return absolute value
     except ValueError:
         print('invalid input.. returning 0.0001')
         return 0.0001
@@ -121,7 +124,9 @@ if __name__ == "__main__":
         current_price = get_current_price(verbose=True)
        
         lower_bound = get_bounds('enter lower bound: ')
+        print(f'lower bound set: {lower_bound}')
         upper_bound = get_bounds('enter upper bound: ')
+        print(f'upper bound set: {upper_bound}')
 
         required_weth = calculate_required_weth(current_price, verbose=True)
        
