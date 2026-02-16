@@ -1,18 +1,18 @@
 import requests
 import pandas as pd
 import matplotlib.pyplot as plt
-from datetime import timezone
+import matplotlib.dates as mdates
 
 # Pool details
 pool_address = "0x8c7080564b5a792a33ef2fd473fba6364d5495e5".lower()
 network = "base"
-timeframe = "hour"
+timeframe = "day"  # Changed to daily candles
 
 # API endpoint
 url = f"https://api.geckoterminal.com/api/v2/networks/{network}/pools/{pool_address}/ohlcv/{timeframe}"
 
 params = {
-    "limit": 168,
+    "limit": 365,      # ~1 year of daily data
     "currency": "usd"
 }
 
@@ -31,60 +31,46 @@ else:
     df['datetime'] = pd.to_datetime(df['timestamp'], unit='s', utc=True)
     df = df.sort_values('datetime').reset_index(drop=True)
     
-    # Human-readable hour string
-    df['hour_str'] = df['datetime'].dt.strftime('%Y-%m-%d %H:00')
+    # Human-readable date string
+    df['date_str'] = df['datetime'].dt.strftime('%Y-%m-%d')
     
-    # Daily grouping
-    df['date'] = df['datetime'].dt.date
-    daily = df.groupby('date')['volume'].sum().reset_index()
-    daily['volume'] = daily['volume'].round(2)
+    # Round volume for display
+    df['volume'] = df['volume'].round(2)
     
-    # Print hourly table
-    print("Hourly Transaction Volume (USD) for cbBTC/WETH Uniswap V3 Pool on Base")
-    print("-" * 70)
-    print(f"{'Time (UTC)':<20} {'Volume (USD)':>15}")
-    print("-" * 70)
+    # Print daily table
+    print("Daily Transaction Volume (USD) for cbBTC/WETH Pool on Base")
+    print("-" * 60)
+    print(f"{'Date':<12} {'Volume (USD)':>20}")
+    print("-" * 60)
     for _, row in df.iterrows():
-        print(f"{row['hour_str']:<20} ${row['volume']:>14,.2f}")
-    print("-" * 70)
+        print(f"{row['date_str']:<12} ${row['volume']:>19,.2f}")
+    print("-" * 60)
     
-    # Print daily summary
-    print("\nDaily Total Volume (USD)")
-    print("-" * 40)
-    print(f"{'Date':<12} {'Daily Volume (USD)':>20}")
-    print("-" * 40)
-    for _, row in daily.iterrows():
-        print(f"{str(row['date']):<12} ${row['volume']:>19,.2f}")
-    print("-" * 40)
-    
+    # Summary
     total_volume = df['volume'].sum()
-    print(f"Total volume over period: ${total_volume:,.2f}")
-    print(f"Data points: {len(df)} hours")
+    print(f"\nTotal volume over period: ${total_volume:,.2f}")
+    print(f"Data points: {len(df)} days (limited to available history)")
+    print(f"Date range: {df['date_str'].iloc[0]} to {df['date_str'].iloc[-1]}")
     
-    # Save to CSV (optional – comment out if not needed)
-    df[['datetime', 'open', 'high', 'low', 'close', 'volume']].to_csv('cbbtc_weth_hourly_volume.csv', index=False)
-    print("\nHourly data saved to 'cbbtc_weth_hourly_volume.csv'")
+    # Save to CSV
+    df[['datetime', 'open', 'high', 'low', 'close', 'volume']].to_csv('cbbtc_weth_daily_volume.csv', index=False)
+    print("\nDaily data saved to 'cbbtc_weth_daily_volume.csv'")
     
-    # Plot 1: Hourly volume (line chart)
-    plt.figure(figsize=(16, 6))
-    plt.plot(df['datetime'], df['volume'], linewidth=1)
-    plt.title('Hourly Transaction Volume (USD) – cbBTC/WETH on Base')
-    plt.xlabel('Time (UTC)')
-    plt.ylabel('Volume (USD)')
+    # Plot: Line chart (better for ~1 year of daily data than crowded bars)
+    plt.figure(figsize=(14, 7))
+    plt.plot(df['datetime'], df['volume'], linewidth=1.5, color='darkblue')
+    plt.fill_between(df['datetime'], df['volume'], alpha=0.1, color='blue')
+    plt.title('Daily Transaction Volume (USD) – cbBTC/WETH Pool on Base', fontsize=14)
+    plt.xlabel('Date (UTC)', fontsize=12)
+    plt.ylabel('Daily Volume (USD)', fontsize=12)
     plt.grid(True, alpha=0.3)
-    plt.xticks(rotation=45)
-    plt.tight_layout()
-    plt.show(block=False)
     
-    # Plot 2: Daily total volume (bar chart)
-    plt.figure(figsize=(10, 6))
-    plt.bar(daily['date'].astype(str), daily['volume'], color='skyblue', edgecolor='navy')
-    plt.title('Daily Total Transaction Volume (USD) – cbBTC/WETH on Base')
-    plt.xlabel('Date')
-    plt.ylabel('Daily Volume (USD)')
-    plt.grid(True, axis='y', alpha=0.3)
-    for i, v in enumerate(daily['volume']):
-        plt.text(i, v + total_volume*0.01, f'${v:,.0f}', ha='center', va='bottom', fontsize=9)
+    # Format x-axis to show months nicely
+    ax = plt.gca()
+    ax.xaxis.set_major_locator(mdates.MonthLocator())
+    ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m'))
+    ax.xaxis.set_minor_locator(mdates.DayLocator(interval=7))
     plt.xticks(rotation=45)
+    
     plt.tight_layout()
-    plt.show(block=True)
+    plt.show()
