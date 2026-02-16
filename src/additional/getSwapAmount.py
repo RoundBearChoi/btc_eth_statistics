@@ -1,7 +1,6 @@
 from getWalletBalance import procCSV
 from getPanRate import get_cbbtc_eth_rate_pancakeswap
-from getUniRate import get_current_price
-from getUniRate import calculate_required_weth
+from getUniRate import get_pool_rate
 
 
 def get_swap_amount():
@@ -14,8 +13,7 @@ def get_swap_amount():
     market_rate, market_liquidity = get_cbbtc_eth_rate_pancakeswap()
     print(f'pancakeswap market rate: {market_rate}')
 
-    current_price = get_current_price(verbose=False)
-    uniswap_rate = calculate_required_weth(current_price, verbose=False)
+    uniswap_rate = get_pool_rate() # calculate_required_weth(current_price, verbose=False)
 
     print(f'uniswap pool rate: {uniswap_rate:.8f}')
 
@@ -26,6 +24,7 @@ def get_swap_amount():
     eth_delta = target_eth_amount - eth_balance
 
     print('')
+    print(' --- swap amount calculation result --- ')
     print(f'eth equivalent: {eth_equi:.8f}')
     print(f'target btc amount: {target_btc_amount:.8f}')
     print(f'target eth amount: {target_eth_amount:.8f}')

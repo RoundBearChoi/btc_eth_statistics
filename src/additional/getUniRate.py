@@ -59,6 +59,7 @@ def get_current_price(verbose: bool = True):
     current_price = adjustment / raw_price  # Human-readable: WETH per cbBTC
 
     if verbose:
+        print('')
         print("=== Price Calculation Steps ===")
         print(f"1. sqrtPriceX96 from chain: {sqrt_price_x96}")
         print(f"2. sqrtPrice (divided by 2**96): {sqrt_price:.12f}")
@@ -119,8 +120,7 @@ def calculate_required_weth(
     return required_weth
 
 
-# Main execution
-if __name__ == "__main__":
+def get_pool_rate() -> float:
     try:
         current_price = get_current_price(verbose=True)
        
@@ -134,7 +134,14 @@ if __name__ == "__main__":
                                                 lower_pct=lower_bound,
                                                 upper_pct=upper_bound,
                                                 verbose=True)
+
+        return required_weth
        
     except Exception as e:
         print(f"Error: {e}")
         print("Tip: Public RPCs can be rate-limited or temporarily down. Try a different RPC from the list above, or use your own key from Alchemy/Infura (Base chain).")
+
+
+# Main execution
+if __name__ == "__main__":
+    get_pool_rate()
