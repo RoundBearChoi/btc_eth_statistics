@@ -96,6 +96,7 @@ def calculate_required_weth(
     required_weth = liquidity * delta_x
    
     if verbose:
+        print('')
         print("=== Liquidity Range Calculation Steps ===")
         print(f"Target range: {lower_pct*100:+.1f}% to {upper_pct*100:+.1f}% around current price")
         print(f"→ Lower price bound: {lower_price:.10f} WETH per cbBTC")
@@ -123,12 +124,16 @@ if __name__ == "__main__":
     try:
         current_price = get_current_price(verbose=True)
        
-        lower_bound = get_bounds('enter lower bound: ')
+        lower_bound = get_bounds('enter lower bound: ') * -1
         print(f'lower bound set: {lower_bound}')
+        print('')
         upper_bound = get_bounds('enter upper bound: ')
         print(f'upper bound set: {upper_bound}')
 
-        required_weth = calculate_required_weth(current_price, verbose=True)
+        required_weth = calculate_required_weth(current_price,
+                                                lower_pct=lower_bound,
+                                                upper_pct=upper_bound,
+                                                verbose=True)
        
     except Exception as e:
         print(f"Error: {e}")
