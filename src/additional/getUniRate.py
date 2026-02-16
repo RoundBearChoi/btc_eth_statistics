@@ -130,7 +130,7 @@ if __name__ == "__main__":
         upper_bound = get_bounds('enter upper bound: ')
         print(f'upper bound set: {upper_bound}')
 
-        required_weth = calculate_required_weth(current_price,
+        required_weth = calculate_required_weth(current_price=current_price,
                                                 lower_pct=lower_bound,
                                                 upper_pct=upper_bound,
                                                 verbose=True)
