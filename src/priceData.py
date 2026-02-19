@@ -44,7 +44,6 @@ def download_crypto_daily_closing(crypto_symbol: str, fiat_symbol: str = 'usd', 
     print('')
     print(f' --- checking data on {crypto_symbol} --- ')
 
-    #fileName = f'{crypto_symbol.lower()}_daily_closing_{years}years.csv'
     fileName = f'{crypto_symbol.lower()}_daily_closing.csv'
 
     if not download_new_file(fileName, crypto_symbol):
