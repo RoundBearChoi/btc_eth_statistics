@@ -15,9 +15,9 @@ def get_stats(asset1: str, asset2: str) -> None:
     print('')
     print('lets go baby..')
 
-    download_crypto_daily_closing(crypto_symbol=asset1, years=1)
+    download_crypto_daily_closing(crypto_symbol=asset1, years=2)
     time.sleep(1)
-    download_crypto_daily_closing(crypto_symbol=asset2, years=1)
+    download_crypto_daily_closing(crypto_symbol=asset2, years=2)
 
     get_price_ratio(asset1, asset2)
 
@@ -39,4 +39,4 @@ def get_stats(asset1: str, asset2: str) -> None:
 
 
 if __name__ == '__main__':
-    get_stats('sol', 'pump')
+    get_stats('btc', 'eth')
