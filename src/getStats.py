@@ -1,7 +1,6 @@
 #getStats.py
 
 import time
-#from downloadPriceData import download_crypto_daily_closing #based on 0utc
 from priceData import download_crypto_daily_closing
 from getPriceRatio import get_price_ratio 
 from getPriceChange import get_price_change
