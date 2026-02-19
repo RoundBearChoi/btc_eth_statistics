@@ -1,5 +1,3 @@
-#getStats.py
-
 import time
 from priceData import download_crypto_daily_closing
 from getPriceRatio import get_price_ratio 
@@ -41,4 +39,4 @@ def get_stats(asset1: str, asset2: str) -> None:
 
 
 if __name__ == '__main__':
-    get_stats('btc', 'eth')
+    get_stats('sol', 'pump')
