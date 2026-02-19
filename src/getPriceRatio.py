@@ -12,8 +12,8 @@ def get_price_ratio(asset1='btc', asset2='eth'):
     print("")
     print(f" --- calculating {asset1}/{asset2} price ratio ---")
 
-    df1 = _load(f'{asset1}_daily_closing_2years.csv', ['date', f'{asset1}_closing_price_usd'])
-    df2 = _load(f'{asset2}_daily_closing_2years.csv', ['date', f'{asset2}_closing_price_usd'])
+    df1 = _load(f'{asset1}_daily_closing.csv', ['date', f'{asset1}_closing_price_usd'])
+    df2 = _load(f'{asset2}_daily_closing.csv', ['date', f'{asset2}_closing_price_usd'])
    
     print('')
     print(df1)
