@@ -37,7 +37,7 @@ def generate_replicates(asset1: str, asset2: str, n_replicates: int = 10) -> Non
 
     # block parameters
     total_rows = len(df)
-    block_size = round(math.sqrt(total_rows))
+    block_size = round(math.sqrt(total_rows)) #sqrt heuristic
     block_count = math.ceil(total_rows / block_size)
 
     print(f"total rows: {total_rows}")
