@@ -1,5 +1,5 @@
 from getWalletBalance import procCSV
-from getPanRate import get_cbbtc_eth_rate_pancakeswap
+from marketRate import CryptoRatioFetcher 
 from getUniRate import get_pool_rate
 
 
@@ -10,8 +10,11 @@ def get_swap_amount():
     print(f'cbbtc balance: {cbbtc_balance:.8f}')
     print(f'eth balance: {eth_balance:.8f}')
 
-    market_rate, market_liquidity = get_cbbtc_eth_rate_pancakeswap()
-    print(f'pancakeswap market rate: {market_rate}')
+    fetcher = CryptoRatioFetcher()
+    market_rate = fetcher.get_btc_eth_ratio()
+
+    print('')
+    print(f'market rate: {market_rate}')
 
     uniswap_rate = get_pool_rate()
 
