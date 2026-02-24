@@ -42,11 +42,10 @@ print(f"\nT-test p-value (mean == 0) : {p_value:.4f} → {'Not significant' if p
 autocorr = changes.autocorr(lag=1)
 print(f"Lag-1 Autocorrelation     : {autocorr:.4f} → Almost none (pure noise)")
 
-# ====================== 3. MONTHLY BLOCK METHOD (FIXED) ======================
+# ====================== 3. MONTHLY BLOCK METHOD ======================
 print("\n=== MONTHLY BLOCK ANALYSIS (brutally effective) ===")
 print("-" * 60)
 
-# FIXED: using dict syntax → works on ALL pandas versions (including 3.x)
 monthly = df['Ratio_Relative_Change'].resample('ME').agg({
     'count': 'count',
     'mean': 'mean',
@@ -72,7 +71,7 @@ rolling = df['Ratio_Relative_Change'].rolling(window=30, min_periods=15).agg({
 
 print(rolling.tail(10).round(4))
 
-# ====================== 5. VISUALS ======================
+# ====================== 5. VISUALS + SAVE AS PNG ======================
 plt.figure(figsize=(14, 10))
 
 plt.subplot(2, 2, 1)
@@ -97,7 +96,12 @@ plt.axhline(0, color='red', linestyle='--')
 plt.title('30-Day Rolling Mean (regime detector)')
 
 plt.tight_layout()
+
+# SAVE AS HIGH-QUALITY PNG
+plt.savefig('ratio_daily_analysis.png', dpi=300, bbox_inches='tight')
+print(f"\n📸 Chart saved as ratio_daily_analysis.png (300 DPI)")
+
 plt.show()
 
-print("\n🎯 Fixed and ready! The monthly + rolling blocks are now rock-solid.")
-print("   Just run the script again — no more errors.")
+print("\n🎯 All done! PNG saved automatically every run.")
+print("   You now have clean stats + monthly CSV + beautiful chart PNG.")
