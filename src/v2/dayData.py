@@ -26,6 +26,7 @@ class DayDataProcessor:
             raise FileNotFoundError(f"❌ Input file '{self.input_file}' not found!")
 
         df = pd.read_csv(self.input_file)
+        print('')
         print(f"✅ Loaded {len(df):,} records from {self.input_file}")
 
         # Clean datetime

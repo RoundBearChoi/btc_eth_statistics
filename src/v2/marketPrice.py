@@ -15,6 +15,7 @@ class CryptoPriceDownloader:
         self.eth_raw_file = 'eth_usd_hourly_raw.csv'
 
     def _download_data(self):
+        print('')
         print("Downloading hourly BTC-USD & ETH-USD data...")
         btc_data = yf.download('BTC-USD', start=self.start_date, interval='1h', progress=False)
         eth_data = yf.download('ETH-USD', start=self.start_date, interval='1h', progress=False)
