@@ -3,40 +3,42 @@ import os
 
 class DayDataProcessor:
     """
-    Loads btc_eth_prices_kst_10am_10pm_2years.csv and rearranges it into
-    a daily paired format (exactly like your sample sort.csv):
+    Loads btc_eth_prices_kst_10am_10pm_2years.csv and creates daily paired rows
+    exactly like sample sort.csv + the two requested columns:
     
-    One row per day → AM (10:00 KST) + BTC/ETH ratio + PM (22:00 KST) + BTC/ETH ratio
+    • Ratio_Difference     = PM_ratio - AM_ratio
+    • Ratio_Relative_Change = (PM_ratio - AM_ratio) / AM_ratio   ← decimal form (NOT %)
+    
+    Example for your last row (2026-02-23):
+        Ratio_Difference      = -0.1418641661
+        Ratio_Relative_Change = -0.00409156566492   ← exactly what you asked for
     """
     
     def __init__(self, input_file='btc_eth_prices_kst_10am_10pm_2years.csv'):
         self.input_file = input_file
-        self.output_file = 'btc_eth_daily_paired.csv'   # you can rename if you want "sample sort.csv"
+        self.output_file = 'btc_eth_daily_paired.csv'   # change to "sample sort.csv" if you want
 
     def load_data(self):
-        """Load the CSV and prepare datetime + ratio."""
+        """Load CSV and prepare data."""
         if not os.path.exists(self.input_file):
             raise FileNotFoundError(f"❌ Input file '{self.input_file}' not found!")
 
         df = pd.read_csv(self.input_file)
         print(f"✅ Loaded {len(df):,} records from {self.input_file}")
 
-        # Clean datetime column (remove " KST" suffix if present)
+        # Clean datetime
         df['KST_Datetime'] = pd.to_datetime(
             df['KST_Datetime'].str.replace(' KST', '', regex=False),
             format='%Y-%m-%d %H:%M'
         )
 
-        # Extract date for grouping
         df['Date'] = df['KST_Datetime'].dt.date
-
-        # Calculate BTC/ETH ratio
         df['BTC_ETH_Ratio'] = df['BTC_Price'] / df['ETH_Price']
 
         return df.sort_values('KST_Datetime').reset_index(drop=True)
 
     def create_daily_pairs(self):
-        """Pair every day's 10:00 KST and 22:00 KST."""
+        """Build the paired daily rows."""
         df = self.load_data()
         daily_rows = []
 
@@ -47,37 +49,51 @@ class DayDataProcessor:
                 am = group.iloc[0]   # 10:00 KST
                 pm = group.iloc[1]   # 22:00 KST
 
-                row = [
-                    am['KST_Datetime'].strftime('%Y-%m-%d %H:%M KST'),  # AM datetime
-                    am['Time_of_Day'],                                 # AM time
-                    am['BTC_Price'],                                   # AM BTC
-                    am['ETH_Price'],                                   # AM ETH
-                    round(am['BTC_ETH_Ratio'], 10),                    # AM ratio (matches sample precision)
+                am_ratio = am['BTC_ETH_Ratio']
+                pm_ratio = pm['BTC_ETH_Ratio']
 
-                    pm['KST_Datetime'].strftime('%Y-%m-%d %H:%M KST'), # PM datetime
-                    pm['Time_of_Day'],                                 # PM time
-                    pm['BTC_Price'],                                   # PM BTC
-                    pm['ETH_Price'],                                   # PM ETH
-                    round(pm['BTC_ETH_Ratio'], 10)                     # PM ratio
+                # === Your requested calculations ===
+                ratio_diff = round(pm_ratio - am_ratio, 10)
+                ratio_rel_change = round(
+                    (pm_ratio - am_ratio) / am_ratio, 14
+                ) if am_ratio != 0 else 0.0
+
+                row = [
+                    am['KST_Datetime'].strftime('%Y-%m-%d %H:%M KST'),
+                    am['Time_of_Day'],
+                    am['BTC_Price'],
+                    am['ETH_Price'],
+                    round(am_ratio, 10),
+
+                    pm['KST_Datetime'].strftime('%Y-%m-%d %H:%M KST'),
+                    pm['Time_of_Day'],
+                    pm['BTC_Price'],
+                    pm['ETH_Price'],
+                    round(pm_ratio, 10),
+
+                    ratio_diff,          # column 11
+                    ratio_rel_change     # column 12 ← now decimal form
                 ]
                 daily_rows.append(row)
             else:
                 print(f"⚠️  Skipping incomplete day {date} (only {len(group)} record(s))")
 
-        # Create DataFrame with exact column order like your sample
+        # Column names (AM block + PM block + 2 new columns)
         columns = [
-            'KST_Datetime', 'Time_of_Day', 'BTC_Price', 'ETH_Price', 'BTC_ETH_Ratio',
-            'KST_Datetime', 'Time_of_Day', 'BTC_Price', 'ETH_Price', 'BTC_ETH_Ratio'
+            'KST_Datetime', 'Time_of_Day', 'BTC_Price', 'ETH_Price', 'BTC_ETH_Ratio',   # AM
+            'KST_Datetime', 'Time_of_Day', 'BTC_Price', 'ETH_Price', 'BTC_ETH_Ratio',   # PM
+            'Ratio_Difference', 'Ratio_Relative_Change'                                 # NEW
         ]
+
         result_df = pd.DataFrame(daily_rows, columns=columns)
 
-        # Save exactly like sample sort.csv (no index, floating-point precision preserved)
-        result_df.to_csv(self.output_file, index=False, float_format='%.10f')
+        # Save with high precision so the relative change keeps all 14 decimals
+        result_df.to_csv(self.output_file, index=False, float_format='%.14f')
         
-        print(f"\n🎉 Success! Created {len(result_df):,} daily paired rows.")
+        print(f"\n🎉 Success! Created {len(result_df):,} daily rows.")
         print(f"💾 Saved to → {self.output_file}")
-        print("\nFirst row preview (matches your sample format):")
-        print(result_df.head(1).to_string(index=False))
+        print("\nPreview of the LAST row (your 2026-02-23 data):")
+        print(result_df.tail(1)[['Ratio_Difference', 'Ratio_Relative_Change']].to_string(index=False))
 
         return result_df
 
