@@ -114,8 +114,11 @@ print(f"   ±{balanced_range_pct}% around the 10:00 KST ratio")
 print(f"   Covers {coverage_pct:.1f}% of all {len(changes)} historical days")
 print(f"   ({PERCENTILE}th percentile of |daily moves| — updates automatically)")
 
-# ====================== 6. VISUALS + SAVE AS PNG (NO WINDOW) ======================
-plt.figure(figsize=(14, 11))
+# ====================== 6. VISUALS + SAVE AS PNG (COMPACT) ======================
+print("\n🎨 Saving in Compact resolution (super small file size)...")
+
+# Compact: 1680×1320 px — looks great on your monitor, maximum memory saver
+plt.figure(figsize=(14, 11), dpi=120)
 
 plt.subplot(2, 2, 1)
 sns.histplot(changes*100, bins=80, kde=True, color='skyblue')
@@ -148,16 +151,20 @@ plt.figtext(0.5, 0.04,
             f"±{balanced_range_pct}% around the 10:00 KST ratio\n"
             f"Covers {coverage_pct:.1f}% of all {len(changes)} historical days\n"
             f"({PERCENTILE}th percentile — updates automatically when you add new data)",
-            ha='center', va='bottom', fontsize=13, fontweight='bold',
+            ha='center', va='bottom', fontsize=11, fontweight='bold',
             bbox=dict(boxstyle="round,pad=1.2", facecolor="#E6F3FF", edgecolor="#1E88E5", linewidth=2),
             linespacing=1.6)
 
-# Save with percentile in filename + close immediately (no window)
+# Clean filename (no _Light suffix)
 png_filename = f"ratio_daily_analysis_{int(PERCENTILE)}.png"
-plt.savefig(png_filename, dpi=300, bbox_inches='tight')
-plt.close()   # ← IMPORTANT: closes figure so no window appears
+plt.savefig(png_filename, 
+            dpi=120, 
+            bbox_inches='tight',
+            pil_kwargs={'compression': 9, 'optimize': True})
 
-print(f"\n📸 Chart saved as {png_filename}")
-print("   (Script finished instantly — no chart window)")
+plt.close()
+
+print(f"\n📸 Chart saved → {png_filename}")
+print("   (1680×1320 px — super compact, looks great on your monitor)")
 
 print("\n🎯 Done! Run again anytime to choose a different percentile.")
