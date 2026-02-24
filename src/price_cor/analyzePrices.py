@@ -110,9 +110,9 @@ class PriceAnalyzer:
         plt.tight_layout()
 
         plot_file = f"{col1}_{col2}_LP_analysis.png"
-        plt.savefig(plot_file, dpi=300, bbox_inches='tight')
-        print(f"\n💾 Charts saved → {plot_file}")
-        plt.show()
+        plt.savefig(plot_file, dpi=120, bbox_inches='tight')   # 40% resolution
+        print(f"\n💾 Charts saved → {plot_file}  (120 dpi — much smaller file)")
+        # plt.show() removed → no pause
 
         # Save full data
         df['Spread'] = spread
