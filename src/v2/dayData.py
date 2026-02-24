@@ -9,14 +9,16 @@ class DayDataProcessor:
     • Ratio_Difference     = PM_ratio - AM_ratio
     • Ratio_Relative_Change = (PM_ratio - AM_ratio) / AM_ratio   ← decimal form (NOT %)
     
-    Example for your last row (2026-02-23):
-        Ratio_Difference      = -0.1418641661
-        Ratio_Relative_Change = -0.00409156566492   ← exactly what you asked for
+    MAX PRECISION MODE:
+    - No artificial rounding on Difference or Relative_Change
+    - Full float64 precision (saved with 16 decimal places)
+    - BTC/ETH ratios kept at 10 decimals for readability
+    - Relative change stored as decimal (e.g. 0.00803986917256 = +0.8039...)
     """
-    
+
     def __init__(self, input_file='btc_eth_prices_kst_10am_10pm_2years.csv'):
         self.input_file = input_file
-        self.output_file = 'btc_eth_daily_paired.csv'   # change to "sample sort.csv" if you want
+        self.output_file = 'btc_eth_daily_paired.csv'
 
     def load_data(self):
         """Load CSV and prepare data."""
@@ -38,7 +40,7 @@ class DayDataProcessor:
         return df.sort_values('KST_Datetime').reset_index(drop=True)
 
     def create_daily_pairs(self):
-        """Build the paired daily rows."""
+        """Build the paired daily rows with maximum precision."""
         df = self.load_data()
         daily_rows = []
 
@@ -52,18 +54,16 @@ class DayDataProcessor:
                 am_ratio = am['BTC_ETH_Ratio']
                 pm_ratio = pm['BTC_ETH_Ratio']
 
-                # === Your requested calculations ===
-                ratio_diff = round(pm_ratio - am_ratio, 10)
-                ratio_rel_change = round(
-                    (pm_ratio - am_ratio) / am_ratio, 14
-                ) if am_ratio != 0 else 0.0
+                # === MAX PRECISION (decimal form, no rounding) ===
+                ratio_diff = pm_ratio - am_ratio
+                ratio_rel_change = (pm_ratio - am_ratio) / am_ratio if am_ratio != 0 else 0.0
 
                 row = [
                     am['KST_Datetime'].strftime('%Y-%m-%d %H:%M KST'),
                     am['Time_of_Day'],
                     am['BTC_Price'],
                     am['ETH_Price'],
-                    round(am_ratio, 10),
+                    round(am_ratio, 10),          # clean 10 decimals for ratios
 
                     pm['KST_Datetime'].strftime('%Y-%m-%d %H:%M KST'),
                     pm['Time_of_Day'],
@@ -71,8 +71,8 @@ class DayDataProcessor:
                     pm['ETH_Price'],
                     round(pm_ratio, 10),
 
-                    ratio_diff,          # column 11
-                    ratio_rel_change     # column 12 ← now decimal form
+                    ratio_diff,          # full precision
+                    ratio_rel_change     # full precision (decimal)
                 ]
                 daily_rows.append(row)
             else:
@@ -87,12 +87,12 @@ class DayDataProcessor:
 
         result_df = pd.DataFrame(daily_rows, columns=columns)
 
-        # Save with high precision so the relative change keeps all 14 decimals
-        result_df.to_csv(self.output_file, index=False, float_format='%.14f')
+        # Save with maximum safe precision (16 decimals)
+        result_df.to_csv(self.output_file, index=False, float_format='%.16f')
         
         print(f"\n🎉 Success! Created {len(result_df):,} daily rows.")
         print(f"💾 Saved to → {self.output_file}")
-        print("\nPreview of the LAST row (your 2026-02-23 data):")
+        print("\nPreview of the LAST row (full precision):")
         print(result_df.tail(1)[['Ratio_Difference', 'Ratio_Relative_Change']].to_string(index=False))
 
         return result_df
