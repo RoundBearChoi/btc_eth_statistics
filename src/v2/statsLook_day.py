@@ -6,7 +6,7 @@ import seaborn as sns
 
 # ====================== 1. LOAD & CLEAN DATA ======================
 df = pd.read_csv('btc_eth_day_paired.csv')
-df = df.iloc[:, [0, -1]].copy()                     # first + last column (robust)
+df = df.iloc[:, [0, -1]].copy()
 df.columns = ['KST_Datetime', 'Ratio_Relative_Change']
 
 df['Date'] = pd.to_datetime(
@@ -49,7 +49,7 @@ monthly = df['Ratio_Relative_Change'].resample('ME').agg({
 })
 
 monthly_display = monthly[['mean', 'positive_pct', 'count']].copy()
-monthly_display['mean'] = monthly_display['mean'] * 100   # show as %
+monthly_display['mean'] = monthly_display['mean'] * 100
 
 print(monthly_display.round(4))
 monthly_display.to_csv('ratio_monthly_blocks.csv')
@@ -114,7 +114,7 @@ print(f"   ±{balanced_range_pct}% around the 10:00 KST ratio")
 print(f"   Covers {coverage_pct:.1f}% of all {len(changes)} historical days")
 print(f"   ({PERCENTILE}th percentile of |daily moves| — updates automatically)")
 
-# ====================== 6. VISUALS + SAVE AS PNG ======================
+# ====================== 6. VISUALS + SAVE AS PNG (NO WINDOW) ======================
 plt.figure(figsize=(14, 11))
 
 plt.subplot(2, 2, 1)
@@ -152,11 +152,12 @@ plt.figtext(0.5, 0.04,
             bbox=dict(boxstyle="round,pad=1.2", facecolor="#E6F3FF", edgecolor="#1E88E5", linewidth=2),
             linespacing=1.6)
 
-# === NEW: Save PNG with percentile in filename ===
+# Save with percentile in filename + close immediately (no window)
 png_filename = f"ratio_daily_analysis_{int(PERCENTILE)}.png"
 plt.savefig(png_filename, dpi=300, bbox_inches='tight')
-print(f"\n📸 Chart saved as {png_filename} (using {PERCENTILE}th percentile)")
+plt.close()   # ← IMPORTANT: closes figure so no window appears
 
-plt.show()
+print(f"\n📸 Chart saved as {png_filename}")
+print("   (Script finished instantly — no chart window)")
 
-print("\n🎯 Done! Run the script again anytime to choose a different percentile.")
+print("\n🎯 Done! Run again anytime to choose a different percentile.")
