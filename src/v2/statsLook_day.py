@@ -112,7 +112,6 @@ coverage_pct = (abs_changes <= p).mean() * 100
 print(f"\n💡 DYNAMIC BALANCED RANGE RECOMMENDATION ({PERCENTILE}th percentile)")
 print(f"   ±{balanced_range_pct}% around the 10:00 KST ratio")
 print(f"   Covers {coverage_pct:.1f}% of all {len(changes)} historical days")
-print(f"   ({PERCENTILE}th percentile of |daily moves| — updates automatically)")
 
 # ====================== 6. VISUALS + SAVE AS PNG (COMPACT) ======================
 print("\n🎨 Saving in Compact resolution (super small file size)...")
@@ -145,17 +144,16 @@ plt.title('30-Day Rolling Mean (regime detector)')
 
 plt.tight_layout(rect=[0, 0.08, 1, 0.95])
 
-# Dynamic box
+# Clean box text (removed the percentile update line)
 plt.figtext(0.5, 0.04,
             f"💡 DYNAMIC BALANCED RANGE for cbBTC-ETH pool (10am–10pm KST)\n"
             f"±{balanced_range_pct}% around the 10:00 KST ratio\n"
-            f"Covers {coverage_pct:.1f}% of all {len(changes)} historical days\n"
-            f"({PERCENTILE}th percentile — updates automatically when you add new data)",
-            ha='center', va='bottom', fontsize=11, fontweight='bold',
+            f"Covers {coverage_pct:.1f}% of all {len(changes)} historical days",
+            ha='center', va='bottom', fontsize=12, fontweight='bold',
             bbox=dict(boxstyle="round,pad=1.2", facecolor="#E6F3FF", edgecolor="#1E88E5", linewidth=2),
             linespacing=1.6)
 
-# Clean filename (no _Light suffix)
+# Clean filename (no suffix)
 png_filename = f"ratio_daily_analysis_{int(PERCENTILE)}.png"
 plt.savefig(png_filename, 
             dpi=120, 
