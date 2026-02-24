@@ -67,7 +67,7 @@ class PriceAnalyzer:
         print("   → Number of days for the spread to move halfway back to equilibrium")
         print(f"   Half-life             : {half_life:.1f} days\n" if not np.isnan(half_life) else "   Half-life             : No mean reversion detected\n")
 
-        print("3. Daily return correlation (your 0.8155) ← helpful but secondary")
+        print("3. Daily return correlation ← helpful but secondary")
         print("   → How strongly the daily % moves line up (higher is better)")
         print(f"   Daily correlation     : {corr:.4f}")
 
