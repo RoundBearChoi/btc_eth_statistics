@@ -5,10 +5,11 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-from datetime import datetime
+import statsmodels.api as sm
+from statsmodels.tsa.stattools import coint
 
 sns.set_style("darkgrid")
-plt.rcParams['figure.figsize'] = (12, 8)
+plt.rcParams['figure.figsize'] = (14, 10)
 
 class PriceAnalyzer:
     def __init__(self, token1: str, token2: str):
@@ -19,84 +20,111 @@ class PriceAnalyzer:
     def load_data(self):
         if not os.path.exists(self.filename):
             print(f"❌ CSV not found: {self.filename}")
-            print("   Run first: python getPrices.py eth uni")
+            print("   First run: python getPrices.py btc eth")
             sys.exit(1)
         
         df = pd.read_csv(self.filename, index_col='Date', parse_dates=True)
         self.df = df[[self.name1, self.name2]].dropna()
-        print(f"✅ Loaded {len(self.df):,} days ({self.df.index[0].date()} → {self.df.index[-1].date()})")
+        print(f"✅ Loaded {len(self.df):,} days from {self.df.index[0].date()} to {self.df.index[-1].date()}")
 
     def analyze_and_plot(self):
         df = self.df.copy()
         col1, col2 = self.name1, self.name2
 
-        # 1. Price Ratio
-        df['Ratio'] = df[col1] / df[col2]
-        
-        # 2. Daily log returns (best for correlation)
+        # Calculate the 3 key metrics
         df['Ret1'] = np.log(df[col1] / df[col1].shift(1))
         df['Ret2'] = np.log(df[col2] / df[col2].shift(1))
         df = df.dropna()
 
-        # 3. Key stats
         corr = df['Ret1'].corr(df['Ret2'])
-        rolling_corr_30 = df['Ret1'].rolling(30).corr(df['Ret2'])
-        rolling_corr_90 = df['Ret1'].rolling(90).corr(df['Ret2'])
 
-        print("\n" + "="*60)
-        print(f"📊 CORRELATION ANALYSIS: {col1} vs {col2}")
-        print("="*60)
-        print(f"Overall correlation of daily returns : {corr:.4f} ({'Very High' if abs(corr)>0.8 else 'High' if abs(corr)>0.6 else 'Moderate' if abs(corr)>0.4 else 'Low'})")
-        print(f"30-day rolling corr (latest)         : {rolling_corr_30.iloc[-1]:.4f}")
-        print(f"90-day rolling corr (latest)         : {rolling_corr_90.iloc[-1]:.4f}")
-        print(f"ETH/UNI ratio (today)                : {df['Ratio'].iloc[-1]:.4f}")
-        print(f"Ratio 30-day change                  : {(df['Ratio'].iloc[-1]/df['Ratio'].iloc[-30] - 1)*100:+.1f}%")
-        print("="*60)
+        # Cointegration
+        coint_score, pvalue, crit_values = coint(df[col1], df[col2], trend='c', method='aeg')
+
+        # Hedge ratio & Spread for half-life
+        log_col2 = np.log(df[col2])
+        X = sm.add_constant(log_col2)
+        model = sm.OLS(np.log(df[col1]), X).fit()
+        beta = model.params.iloc[-1]
+
+        spread = np.log(df[col1]) - beta * np.log(df[col2])
+        spread_lag = spread.shift(1)
+        delta_spread = spread - spread_lag
+        reg = sm.OLS(delta_spread.dropna(), sm.add_constant(spread_lag.dropna())).fit()
+        hl_lambda = reg.params.iloc[-1]
+        half_life = -np.log(2) / hl_lambda if hl_lambda < 0 else np.nan
+
+        # ====================== 3 KEY METRICS ======================
+        print("\n" + "="*80)
+        print(f"📊 3 KEY METRICS: {col1} vs {col2}  (for Liquidity Pool)")
+        print("="*80)
+
+        print("1. Cointegration p-value ← #1 by far (want < 0.05, ideally < 0.01)")
+        print("   → Measures if the price ratio is stable and mean-reverting over time")
+        print(f"   Cointegration p-value : {pvalue:.4f}\n")
+
+        print("2. Half-life (how fast the ratio snaps back — want 10–60 days)")
+        print("   → Number of days for the spread to move halfway back to equilibrium")
+        print(f"   Half-life             : {half_life:.1f} days\n" if not np.isnan(half_life) else "   Half-life             : No mean reversion detected\n")
+
+        print("3. Daily return correlation (your 0.8155) ← helpful but secondary")
+        print("   → How strongly the daily % moves line up (higher is better)")
+        print(f"   Daily correlation     : {corr:.4f}")
+
+        print("="*80)
 
         # ====================== CHARTS ======================
         fig = plt.figure()
 
-        # Chart 1: Normalized Prices
-        ax1 = fig.add_subplot(2, 2, 1)
-        norm = df[[col1, col2]] / df[[col1, col2]].iloc[0] * 100
-        norm.plot(ax=ax1, title=f'Normalized Prices (start = 100)')
-        ax1.set_ylabel('Index')
+        ax1 = fig.add_subplot(2, 3, 1)
+        (df[[col1, col2]] / df[[col1, col2]].iloc[0] * 100).plot(ax=ax1)
+        ax1.set_title('Normalized Prices')
 
-        # Chart 2: Price Ratio
-        ax2 = fig.add_subplot(2, 2, 2)
-        df['Ratio'].plot(ax=ax2, color='purple', title=f'{col1}/{col2} Price Ratio')
-        ax2.axhline(df['Ratio'].mean(), color='gray', linestyle='--', alpha=0.7)
+        ax2 = fig.add_subplot(2, 3, 2)
+        (df[col1] / df[col2]).plot(ax=ax2, color='purple')
+        ax2.set_title(f'{col1}/{col2} Price Ratio')
 
-        # Chart 3: Rolling Correlation
-        ax3 = fig.add_subplot(2, 2, 3)
-        rolling_corr_30.plot(ax=ax3, label='30-day', color='orange')
-        rolling_corr_90.plot(ax=ax3, label='90-day', color='blue')
-        ax3.axhline(corr, color='red', linestyle='--', label=f'Overall ({corr:.3f})')
-        ax3.set_title('Rolling Correlation of Returns')
-        ax3.legend()
+        ax3 = fig.add_subplot(2, 3, 3)
+        df['Ret1'].rolling(60).corr(df['Ret2']).plot(ax=ax3, color='orange')
+        ax3.axhline(corr, color='red', linestyle='--')
+        ax3.set_title('60-day Rolling Correlation')
 
-        # Chart 4: Returns Scatter
-        ax4 = fig.add_subplot(2, 2, 4)
-        sns.regplot(x=df['Ret2'], y=df['Ret1'], ax=ax4, scatter_kws={'alpha':0.4}, line_kws={'color':'red'})
-        ax4.set_xlabel(f'{col2} Daily Log Return')
-        ax4.set_ylabel(f'{col1} Daily Log Return')
-        ax4.set_title('Return Scatter + Regression')
+        ax4 = fig.add_subplot(2, 3, 4)
+        sns.regplot(x=df['Ret2'], y=df['Ret1'], scatter_kws={'alpha':0.5}, line_kws={'color':'red'}, ax=ax4)
+        ax4.set_title('Daily Returns Scatter')
 
+        ax5 = fig.add_subplot(2, 3, 5)
+        spread.plot(ax=ax5, color='teal')
+        ax5.axhline(spread.mean(), color='black', linestyle='--')
+        ax5.set_title('Cointegrating Spread')
+
+        ax6 = fig.add_subplot(2, 3, 6)
+        zscore = (spread - spread.mean()) / spread.std()
+        zscore.plot(ax=ax6, color='darkred')
+        ax6.axhline(0, color='black', linestyle='--')
+        ax6.axhline(2, color='red', linestyle=':')
+        ax6.axhline(-2, color='green', linestyle=':')
+        ax6.set_title('Z-Score')
+
+        plt.suptitle(f'{col1} vs {col2} — 3 Key Metrics for LP', fontsize=16)
         plt.tight_layout()
-        plot_file = f"{col1}_{col2}_correlation_analysis.png"
+
+        plot_file = f"{col1}_{col2}_LP_analysis.png"
         plt.savefig(plot_file, dpi=300, bbox_inches='tight')
-        print(f"\n💾 Charts saved as: {plot_file}")
+        print(f"\n💾 Charts saved → {plot_file}")
         plt.show()
 
-        # Bonus: Save full data with metrics
+        # Save full data
+        df['Spread'] = spread
+        df['Spread_Zscore'] = zscore
         df.to_csv(f"{col1}_{col2}_full_analysis.csv")
-        print(f"💾 Full dataset with returns & ratio saved as: {col1}_{col2}_full_analysis.csv")
+        print(f"💾 Full data saved → {col1}_{col2}_full_analysis.csv")
 
 
 if __name__ == "__main__":
     if len(sys.argv) != 3:
         print("Usage: python analyzePrices.py <token1> <token2>")
-        print("Example: python analyzePrices.py eth uni")
+        print("Example: python analyzePrices.py btc eth")
         sys.exit(1)
 
     analyzer = PriceAnalyzer(sys.argv[1], sys.argv[2])
