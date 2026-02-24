@@ -249,7 +249,7 @@ class RatioAnalyzer:
         plt.tight_layout(rect=[0, 0.085, 1, 0.96])
 
         plt.figtext(0.5, 0.015,
-                    f"💡 DYNAMIC BALANCED RANGE for cbBTC-ETH pool {self.period_desc}\n"
+                    f"DYNAMIC BALANCED RANGE for cbBTC-ETH pool {self.period_desc}\n"
                     f"±{self.balanced_range_pct}% around the {self.reference_time} KST ratio • "
                     f"Covers {self.coverage_pct:.1f}% of {len(self.changes)} historical {self.unit_plural}\n"
                     f"Block-bootstrap 95% CI for {self.PERCENTILE}th percentile: [{self.ci95_p[0]*100:.1f}%, {self.ci95_p[1]*100:.1f}%]",
