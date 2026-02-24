@@ -64,22 +64,58 @@ rolling = df['Ratio_Relative_Change'].rolling(window=30, min_periods=15).agg({
 
 print(rolling.tail(10).round(4))
 
-# ====================== 5. DYNAMIC BALANCED RANGE (derived from YOUR data) ======================
-# This is fully automatic — no hard-coded number
-# We take the 95th percentile of absolute changes → exactly the range that has historically kept you in-range 95% of the time
+# ====================== 5. DYNAMIC BALANCED RANGE (Interactive) ======================
+print("\n" + "="*70)
+print("💡 DYNAMIC BALANCED RANGE SETUP")
+print("="*70)
+print("Choose how wide you want the daily BTC/ETH ratio range:")
+print("1) 95th percentile  → Wider / safer     (~±2.9%)")
+print("2) 90th percentile  → Recommended balance (~±2.2%)")
+print("3) 85th percentile  → Tighter           (~±1.8%)")
+print("4) Custom percentile")
+
+while True:
+    choice = input("\nEnter 1-4 (or press Enter for default 90th): ").strip()
+    
+    if choice == "" or choice == "2":
+        PERCENTILE = 90
+        break
+    elif choice == "1":
+        PERCENTILE = 95
+        break
+    elif choice == "3":
+        PERCENTILE = 85
+        break
+    elif choice == "4":
+        try:
+            custom = float(input("Enter custom percentile (e.g. 92 or 88): "))
+            if 50 < custom < 100:
+                PERCENTILE = custom
+                break
+            else:
+                print("Please enter a number between 50 and 100.")
+        except:
+            print("Invalid → using default 90")
+            PERCENTILE = 90
+            break
+    else:
+        print("Please enter 1, 2, 3 or 4.")
+
+print(f"✅ Using {PERCENTILE}th percentile")
+
+# Calculation
 abs_changes = np.abs(changes)
-p95 = np.percentile(abs_changes, 95)          # this is the key line
-balanced_range_pct = round(p95 * 100, 1)      # e.g. 2.7 or 2.8 — updates every time you add new rows
+p = np.percentile(abs_changes, PERCENTILE)
+balanced_range_pct = round(p * 100, 1)
+coverage_pct = (abs_changes <= p).mean() * 100
 
-coverage_pct = (abs_changes <= p95).mean() * 100   # will always be ~95%
-
-print(f"\n💡 DYNAMIC BALANCED RANGE RECOMMENDATION (derived from data)")
+print(f"\n💡 DYNAMIC BALANCED RANGE RECOMMENDATION ({PERCENTILE}th percentile)")
 print(f"   ±{balanced_range_pct}% around the 10:00 KST ratio")
 print(f"   Covers {coverage_pct:.1f}% of all {len(changes)} historical days")
-print(f"   (95th percentile of |daily moves| — automatically updates as you add new data)")
+print(f"   ({PERCENTILE}th percentile of |daily moves| — updates automatically)")
 
-# ====================== 6. VISUALS + SAVE AS PNG (with dynamic recommendation) ======================
-plt.figure(figsize=(14, 11))   # slightly taller for the box
+# ====================== 6. VISUALS + SAVE AS PNG ======================
+plt.figure(figsize=(14, 11))
 
 plt.subplot(2, 2, 1)
 sns.histplot(changes*100, bins=80, kde=True, color='skyblue')
@@ -106,21 +142,19 @@ plt.title('30-Day Rolling Mean (regime detector)')
 
 plt.tight_layout(rect=[0, 0.08, 1, 0.95])
 
-# === DYNAMIC RECOMMENDATION BOX ON THE PNG ===
+# Dynamic box using your chosen percentile
 plt.figtext(0.5, 0.04,
             f"💡 DYNAMIC BALANCED RANGE for cbBTC-ETH pool (10am–10pm KST)\n"
             f"±{balanced_range_pct}% around the 10:00 KST ratio\n"
             f"Covers {coverage_pct:.1f}% of all {len(changes)} historical days\n"
-            f"(95th percentile — updates automatically when you add new data)",
+            f"({PERCENTILE}th percentile — updates automatically when you add new data)",
             ha='center', va='bottom', fontsize=13, fontweight='bold',
             bbox=dict(boxstyle="round,pad=1.2", facecolor="#E6F3FF", edgecolor="#1E88E5", linewidth=2),
             linespacing=1.6)
 
-# SAVE AS HIGH-QUALITY PNG
 plt.savefig('ratio_daily_analysis.png', dpi=300, bbox_inches='tight')
-print(f"\n📸 Chart saved as ratio_daily_analysis.png (300 DPI — dynamic range included!)")
+print(f"\n📸 Chart saved as ratio_daily_analysis.png (using {PERCENTILE}th percentile)")
 
 plt.show()
 
-print("\n🎯 Done! The recommended range is now 100% derived from your data.")
-print("   Add new rows to the CSV → run the script again → range updates automatically.")
+print("\n🎯 Done! Run the script again anytime to choose a different percentile.")
