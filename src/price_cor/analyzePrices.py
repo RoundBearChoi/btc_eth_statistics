@@ -63,7 +63,7 @@ class PriceAnalyzer:
         print("   → Measures if the price ratio is stable and mean-reverting over time")
         print(f"   Cointegration p-value : {pvalue:.4f}\n")
 
-        print("2. Half-life (how fast the ratio snaps back — want 10–60 days)")
+        print("2. Half-life ← how fast the ratio snaps back (want 10–60 days)")
         print("   → Number of days for the spread to move halfway back to equilibrium")
         print(f"   Half-life             : {half_life:.1f} days\n" if not np.isnan(half_life) else "   Half-life             : No mean reversion detected\n")
 
