@@ -18,7 +18,7 @@ class DayDataProcessor:
 
     def __init__(self, input_file='btc_eth_prices_kst_10am_10pm_2years.csv'):
         self.input_file = input_file
-        self.output_file = 'btc_eth_daily_paired.csv'
+        self.output_file = 'btc_eth_day_paired.csv'
 
     def load_data(self):
         """Load CSV and prepare data."""

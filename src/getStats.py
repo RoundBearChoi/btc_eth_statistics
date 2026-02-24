@@ -39,4 +39,4 @@ def get_stats(asset1: str, asset2: str) -> None:
 
 
 if __name__ == '__main__':
-    get_stats('eth', 'tao')
+    get_stats('btc', 'eth')
