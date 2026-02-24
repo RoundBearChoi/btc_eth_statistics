@@ -44,7 +44,17 @@ class CryptoPriceFetcher:
         )
 
         closing_prices = df["Close"].copy()
-        closing_prices.columns = [self.name1, self.name2]
+        
+        # FIXED: Rename columns by actual ticker (not by position)
+        # This prevents swapping when yfinance returns columns alphabetically sorted
+        closing_prices = closing_prices.rename(columns={
+            self.symbol1: self.name1,
+            self.symbol2: self.name2
+        })
+        
+        # Force column order to always match user input (SOL first, then RAY, etc.)
+        closing_prices = closing_prices[[self.name1, self.name2]]
+        
         closing_prices = closing_prices.dropna()
 
         print(f"\n✅ Downloaded {len(closing_prices):,} trading days")
@@ -60,7 +70,7 @@ if __name__ == "__main__":
         print("Usage: python getPrices.py <token1> <token2>")
         print("Example: python getPrices.py btc eth")
         print("         python getPrices.py eth uni")
-        print("         python getPrices.py sol uni")
+        print("         python getPrices.py sol ray")
         sys.exit(1)
 
     token1 = sys.argv[1]
