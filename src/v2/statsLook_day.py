@@ -142,7 +142,7 @@ plt.title('30-Day Rolling Mean (regime detector)')
 
 plt.tight_layout(rect=[0, 0.08, 1, 0.95])
 
-# Dynamic box using your chosen percentile
+# Dynamic box
 plt.figtext(0.5, 0.04,
             f"💡 DYNAMIC BALANCED RANGE for cbBTC-ETH pool (10am–10pm KST)\n"
             f"±{balanced_range_pct}% around the 10:00 KST ratio\n"
@@ -152,8 +152,10 @@ plt.figtext(0.5, 0.04,
             bbox=dict(boxstyle="round,pad=1.2", facecolor="#E6F3FF", edgecolor="#1E88E5", linewidth=2),
             linespacing=1.6)
 
-plt.savefig('ratio_daily_analysis.png', dpi=300, bbox_inches='tight')
-print(f"\n📸 Chart saved as ratio_daily_analysis.png (using {PERCENTILE}th percentile)")
+# === NEW: Save PNG with percentile in filename ===
+png_filename = f"ratio_daily_analysis_{int(PERCENTILE)}.png"
+plt.savefig(png_filename, dpi=300, bbox_inches='tight')
+print(f"\n📸 Chart saved as {png_filename} (using {PERCENTILE}th percentile)")
 
 plt.show()
 
