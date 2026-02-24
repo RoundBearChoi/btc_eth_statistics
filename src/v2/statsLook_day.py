@@ -204,11 +204,11 @@ plt.legend(fontsize=9, loc='upper right')
 
 plt.tight_layout(rect=[0, 0.085, 1, 0.96])
 
-# Clean centered text box (no more "shown in purple..." line)
+# UPDATED BOTTOM TEXT BOX WITH CI VALUES
 plt.figtext(0.5, 0.015,
             f"💡 DYNAMIC BALANCED RANGE for cbBTC-ETH pool (10am–10pm KST)\n"
-            f"±{balanced_range_pct}% around the 10:00 KST ratio • Covers {coverage_pct:.1f}% of {len(changes)} days\n"
-            f"Block-bootstrap 95% CI for {PERCENTILE}th percentile",
+            f"±{balanced_range_pct}% around the 10:00 KST ratio • Covers {coverage_pct:.1f}% of {len(changes)} historical days\n"
+            f"Block-bootstrap 95% CI for {PERCENTILE}th percentile: [{ci95_p[0]*100:.1f}%, {ci95_p[1]*100:.1f}%]",
             ha='center', va='bottom', fontsize=11, fontweight='bold',
             bbox=dict(boxstyle="round,pad=1.0", facecolor="#E6F3FF", edgecolor="#1E88E5", linewidth=2))
 
