@@ -221,5 +221,3 @@ plt.savefig(png_filename,
 plt.close()
 
 print(f"\n📸 Chart saved → {png_filename}")
-print("   (text box now perfectly clean and centered)")
-print("\n🎯 This is the final version — you're all set!")
