@@ -5,13 +5,18 @@ import pytz
 
 
 class CryptoPriceDownloader:
-    """Downloads BTC & ETH hourly data and extracts exact 10:00 / 22:00 KST prices."""
+    """Downloads BTC & ETH hourly data, extracts exact 10:00 / 22:00 KST prices,
+    and now also saves the raw hourly data from yfinance to CSV."""
 
     def __init__(self):
         self.kst_tz = pytz.timezone('Asia/Seoul')
         # Safe start date to avoid the 730-day boundary bug
         self.start_date = '2024-02-26'
+        
+        # Output files
         self.output_file = 'btc_eth_prices_kst_10am_10pm_2years.csv'
+        self.btc_raw_file = 'btc_usd_hourly_raw.csv'
+        self.eth_raw_file = 'eth_usd_hourly_raw.csv'
 
     def _download_data(self):
         """Download raw hourly data for both assets."""
@@ -43,8 +48,15 @@ class CryptoPriceDownloader:
         return filtered[['KST_Datetime', 'Time_of_Day', 'Price', 'High', 'Low', 'Close', 'Volume']]
 
     def run(self):
-        """Run the full pipeline: download → extract → merge → save."""
+        """Run the full pipeline: download → save raw → extract → merge → save processed."""
         btc_data, eth_data = self._download_data()
+
+        # === NEW: Save raw data from yfinance ===
+        print("\n💾 Saving raw hourly data...")
+        btc_data.to_csv(self.btc_raw_file)
+        eth_data.to_csv(self.eth_raw_file)
+        print(f"   • Raw BTC-USD saved → {self.btc_raw_file}")
+        print(f"   • Raw ETH-USD saved → {self.eth_raw_file}")
 
         btc_prices = self._extract_kst_prices(btc_data, 'BTC')
         eth_prices = self._extract_kst_prices(eth_data, 'ETH')
@@ -66,7 +78,7 @@ class CryptoPriceDownloader:
         print(combined.tail(10).to_string(index=False))
 
         combined.to_csv(self.output_file, index=False)
-        print(f"\n💾 Saved to: {self.output_file}")
+        print(f"\n💾 Processed prices saved to: {self.output_file}")
 
 
 if __name__ == "__main__":
