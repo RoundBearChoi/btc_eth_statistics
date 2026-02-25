@@ -6,7 +6,7 @@ from dune_client.client import DuneClient
 
 class MemecoinDashboard:
     QUERY_ID = 4010816
-    OUTPUT_FILE = "memecoin_dashboard.png"   # always the same file
+    OUTPUT_FILE = "memecoin_dashboard.png"
 
     def __init__(self):
         self.dune = self._init_dune_client()
@@ -31,7 +31,6 @@ class MemecoinDashboard:
         return DuneClient(api_key=DUNE_API_KEY)
 
     def _normalize_platform(self, name):
-        """Clean platform names for consistency"""
         name = str(name).strip()
         lower = name.lower()
         if any(x in lower for x in ['raydium', 'launchlab', 'launch lab']):
@@ -50,7 +49,6 @@ class MemecoinDashboard:
         )
         self.df = self.df.sort_values('date').dropna(subset=['date'])
 
-        # Normalize names
         self.df[self.platform_col] = self.df[self.platform_col].apply(self._normalize_platform)
 
         print("\nLatest 5 rows preview:")
@@ -85,7 +83,6 @@ class MemecoinDashboard:
         latest_date = self.df['date'].max().date()
         print(f"📅 Data as of: {latest_date}\n")
 
-        # Last 7 days
         seven_days_ago = self.df['date'].max() - pd.Timedelta(days=6)
         recent = self.df[self.df['date'] >= seven_days_ago].copy()
         total_7d = recent[self.count_col].sum()
@@ -103,7 +100,6 @@ class MemecoinDashboard:
                                 header=['Platform', 'Launches', '% Share']))
         print("-" * 90)
 
-        # Latest 24h
         latest_day = self.df[self.df['date'] == self.df['date'].max()]
         total_day = latest_day[self.count_col].sum()
         share_day = (latest_day.groupby(self.platform_col)[self.count_col]
@@ -122,9 +118,16 @@ class MemecoinDashboard:
     def generate_dashboard(self):
         today = datetime.now().strftime("%B %d, %Y")
 
+        # Dynamic title: only show platforms that actually have data
+        active_platforms = [p for p in self.df[self.platform_col].unique() 
+                           if self.df_pivot[p].sum() > 0]
+        title_platforms = " • ".join(active_platforms[:4])  # max 4 shown + etc.
+        if len(active_platforms) > 4:
+            title_platforms += " • etc."
+
         fig, axs = plt.subplots(2, 2, figsize=(24, 16), dpi=120)
 
-        # Top-left: Per-platform 7DMA
+        # Top-left: 7DMA
         for platform in self.df_ma[self.platform_col].unique():
             subset = self.df_ma[self.df_ma[self.platform_col] == platform]
             axs[0, 0].plot(subset['date'], subset[self.count_col], label=platform, linewidth=2.8)
@@ -133,7 +136,7 @@ class MemecoinDashboard:
         axs[0, 0].legend(title="Platform", bbox_to_anchor=(1.02, 1), loc='upper left', fontsize=10)
         axs[0, 0].grid(True, alpha=0.3)
 
-        # Top-right: Total aggregate
+        # Top-right: Total
         axs[0, 1].plot(self.df_total['date'], self.df_total['ma7'], color='purple', linewidth=3.5, label='7-Day MA Total')
         axs[0, 1].plot(self.df_total['date'], self.df_total['total_daily'], color='purple', alpha=0.25, label='Raw Daily Total')
         axs[0, 1].set_title("Total Daily Memecoins Across All Platforms\n(7-Day Moving Average)", fontsize=16, pad=15)
@@ -141,7 +144,7 @@ class MemecoinDashboard:
         axs[0, 1].legend(fontsize=11)
         axs[0, 1].grid(True, alpha=0.3)
 
-        # Bottom-left: Market share % — SAFE ordering (no more KeyError)
+        # Bottom-left: Market share (safe ordering)
         priority = ['Pump.fun', 'Raydium LaunchLab']
         existing = list(self.df_share.columns)
         order = [p for p in priority if p in existing]
@@ -151,7 +154,7 @@ class MemecoinDashboard:
 
         colors = {
             'Pump.fun':           '#FF6600',
-            'Raydium LaunchLab':  '#39FF14',   # neon green
+            'Raydium LaunchLab':  '#39FF14',
             'LetsBonk':           '#8E44FF',
             'Moonshot':           '#FF33CC',
             'Bags':               '#00CCFF',
@@ -176,8 +179,7 @@ class MemecoinDashboard:
         axs[1, 1].legend(title="Platform", bbox_to_anchor=(1.02, 1), loc='upper left', fontsize=9.5)
         axs[1, 1].grid(True, alpha=0.3)
 
-        fig.suptitle(f"Memecoin Launch Dashboard — {today}\n"
-                     f"Pump.fun • Raydium LaunchLab • Moonshot • LetsBonk • etc.",
+        fig.suptitle(f"Memecoin Launch Dashboard — {today}\n{title_platforms}",
                      fontsize=22, fontweight='bold', y=0.98)
 
         plt.tight_layout(rect=[0, 0, 1, 0.94])
@@ -193,7 +195,6 @@ class MemecoinDashboard:
         self.generate_dashboard()
         print("\n🚀 Dashboard ready! Open memecoin_dashboard.png")
 
-# ============== RUN IT ==============
 if __name__ == "__main__":
     dashboard = MemecoinDashboard()
     dashboard.run()
