@@ -4,157 +4,188 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 from dune_client.client import DuneClient
 
-# ============== INTERACTIVE KEY ==============
-DUNE_API_KEY = os.getenv("DUNE_API_KEY")
-if not DUNE_API_KEY:
-    DUNE_API_KEY = input("🔑 Paste your full Dune API key here: ").strip()
-    if not DUNE_API_KEY:
-        print("❌ No key entered. Exiting.")
-        exit(1)
+class MemecoinDashboard:
+    QUERY_ID = 4010816
+    OUTPUT_FILE = "memecoin_dashboard.png"   # ← always the same file (overwrites)
 
-dune = DuneClient(api_key=DUNE_API_KEY)
+    def __init__(self):
+        self.dune = self._init_dune_client()
+        self.date_col = 'date_time'
+        self.platform_col = 'platform'
+        self.count_col = 'daily_token_count'
+        
+        # Will be populated by run()
+        self.df = None
+        self.df_ma = None
+        self.df_total = None
+        self.df_pivot = None
+        self.df_share = None
+        self.df_pivot_cum = None
 
-# ============== QUERY ==============
-QUERY_ID = 4010816
+    def _init_dune_client(self):
+        """Interactive Dune API key (same as before)"""
+        DUNE_API_KEY = os.getenv("DUNE_API_KEY")
+        if not DUNE_API_KEY:
+            DUNE_API_KEY = input("🔑 Paste your full Dune API key here: ").strip()
+            if not DUNE_API_KEY:
+                print("❌ No key entered. Exiting.")
+                exit(1)
+        return DuneClient(api_key=DUNE_API_KEY)
 
-print(f"\n🔄 Fetching live data from Dune Query #{QUERY_ID}...")
+    def fetch_data(self):
+        """Fetch latest data from Dune (exactly the same as before)"""
+        print(f"\n🔄 Fetching live data from Dune Query #{self.QUERY_ID}...")
+        self.df = self.dune.get_latest_result_dataframe(self.QUERY_ID)
 
-df = dune.get_latest_result_dataframe(QUERY_ID)
+        self.df['date'] = pd.to_datetime(
+            self.df[self.date_col].astype(str).str.replace(' UTC', ''), 
+            errors='coerce'
+        )
+        self.df = self.df.sort_values('date').dropna(subset=['date'])
 
-date_col = 'date_time'
-platform_col = 'platform'
-count_col = 'daily_token_count'
+        print("\nLatest 5 rows preview:")
+        print(self.df[['date', self.platform_col, self.count_col]].tail(5))
 
-df['date'] = pd.to_datetime(df[date_col].astype(str).str.replace(' UTC', ''), errors='coerce')
-df = df.sort_values('date').dropna(subset=['date'])
+    def compute_metrics(self):
+        """Pre-compute all the dataframes used in charts + tables"""
+        # 7-day MA per platform
+        self.df_ma = (
+            self.df.set_index('date')
+            .groupby(self.platform_col)[self.count_col]
+            .rolling(window=7, min_periods=1)
+            .mean()
+            .reset_index()
+        )
 
-print("\nLatest 5 rows preview:")
-print(df[['date', platform_col, count_col]].tail(5))
+        # Total aggregate
+        self.df_total = self.df.groupby('date')[self.count_col].sum().reset_index(name='total_daily')
+        self.df_total['ma7'] = self.df_total['total_daily'].rolling(window=7, min_periods=1).mean()
 
-# Pre-compute everything
-df_ma = (
-    df.set_index('date')
-    .groupby(platform_col)[count_col]
-    .rolling(window=7, min_periods=1)
-    .mean()
-    .reset_index()
-)
+        # Daily pivot for share & cumulative
+        self.df_pivot = self.df.pivot(
+            index='date', 
+            columns=self.platform_col, 
+            values=self.count_col
+        ).fillna(0)
 
-df_total = df.groupby('date')[count_col].sum().reset_index(name='total_daily')
-df_total['ma7'] = df_total['total_daily'].rolling(window=7, min_periods=1).mean()
+        self.df_share = self.df_pivot.div(self.df_pivot.sum(axis=1), axis=0) * 100
+        self.df_pivot_cum = self.df_pivot.cumsum()
 
-df_pivot = df.pivot(index='date', columns=platform_col, values=count_col).fillna(0)
-df_share = df_pivot.div(df_pivot.sum(axis=1), axis=0) * 100
-df_pivot_cum = df_pivot.cumsum()
+    def print_market_share(self):
+        """Print the exact same beautiful tables as before"""
+        print("\n" + "="*90)
+        print("               CURRENT MARKET SHARE")
+        print("="*90)
 
-# ============== PRINT MARKET SHARE DATA ==============
-print("\n" + "="*90)
-print("               CURRENT MARKET SHARE")
-print("="*90)
+        latest_date = self.df['date'].max().date()
+        print(f"📅 Data as of: {latest_date}\n")
 
-latest_date = df['date'].max().date()
-print(f"📅 Data as of: {latest_date}\n")
+        # Last 7 days
+        seven_days_ago = self.df['date'].max() - pd.Timedelta(days=6)
+        recent = self.df[self.df['date'] >= seven_days_ago].copy()
+        total_7d = recent[self.count_col].sum()
+        share_7d = (recent.groupby(self.platform_col)[self.count_col]
+                    .sum()
+                    .sort_values(ascending=False)
+                    .reset_index())
+        share_7d['share_%'] = (share_7d[self.count_col] / total_7d * 100).round(2)
+        share_7d = share_7d.rename(columns={self.count_col: 'launches'})
 
-# --- Last 7 Days ---
-seven_days_ago = df['date'].max() - pd.Timedelta(days=6)
-recent = df[df['date'] >= seven_days_ago].copy()
+        print(f"LAST 7 DAYS  ({seven_days_ago.date()} → {latest_date})")
+        print(f"Total memecoins launched: {total_7d:,}  →  avg {total_7d/7:,.0f}/day\n")
+        print(share_7d.to_string(index=False, 
+                                columns=['platform', 'launches', 'share_%'],
+                                header=['Platform', 'Launches', '% Share']))
+        print("-" * 90)
 
-total_7d = recent[count_col].sum()
-share_7d = (recent.groupby(platform_col)[count_col]
-            .sum()
-            .sort_values(ascending=False)
-            .reset_index())
+        # Latest 24h
+        latest_day = self.df[self.df['date'] == self.df['date'].max()]
+        total_day = latest_day[self.count_col].sum()
+        share_day = (latest_day.groupby(self.platform_col)[self.count_col]
+                     .sum()
+                     .sort_values(ascending=False)
+                     .reset_index())
+        share_day['share_%'] = (share_day[self.count_col] / total_day * 100).round(2)
+        share_day = share_day.rename(columns={self.count_col: 'launches'})
 
-share_7d['share_%'] = (share_7d[count_col] / total_7d * 100).round(2)
-share_7d = share_7d.rename(columns={count_col: 'launches'})
+        print(f"LATEST 24H ({latest_date})")
+        print(f"Total memecoins launched: {total_day:,}\n")
+        print(share_day.to_string(index=False, 
+                                 columns=['platform', 'launches', 'share_%'],
+                                 header=['Platform', 'Launches', '% Share']))
 
-print(f"LAST 7 DAYS  ({seven_days_ago.date()} → {latest_date})")
-print(f"Total memecoins launched: {total_7d:,}  →  avg {total_7d/7:,.0f}/day\n")
-print(share_7d.to_string(index=False, 
-                        columns=['platform', 'launches', 'share_%'],
-                        header=['Platform', 'Launches', '% Share']))
-print("-" * 90)
+    def generate_dashboard(self):
+        """Build the exact same 2×2 dashboard + save to fixed filename"""
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M")  # only for console log
+        today = datetime.now().strftime("%B %d, %Y")
 
-# --- Latest Day ---
-latest_day = df[df['date'] == df['date'].max()]
-total_day = latest_day[count_col].sum()
-share_day = (latest_day.groupby(platform_col)[count_col]
-             .sum()
-             .sort_values(ascending=False)
-             .reset_index())
+        fig, axs = plt.subplots(2, 2, figsize=(24, 16), dpi=120)
 
-share_day['share_%'] = (share_day[count_col] / total_day * 100).round(2)
-share_day = share_day.rename(columns={count_col: 'launches'})
+        # Top-left: Per-platform 7DMA
+        for platform in self.df_ma[self.platform_col].unique():
+            subset = self.df_ma[self.df_ma[self.platform_col] == platform]
+            axs[0, 0].plot(subset['date'], subset[self.count_col], label=platform, linewidth=2.8)
+        axs[0, 0].set_title("7-Day MA — Daily Memecoins by Platform", fontsize=16, pad=15)
+        axs[0, 0].set_ylabel("Avg Daily Creations", fontsize=12)
+        axs[0, 0].legend(title="Platform", bbox_to_anchor=(1.02, 1), loc='upper left', fontsize=10)
+        axs[0, 0].grid(True, alpha=0.3)
 
-print(f"LATEST 24H ({latest_date})")
-print(f"Total memecoins launched: {total_day:,}\n")
-print(share_day.to_string(index=False, 
-                         columns=['platform', 'launches', 'share_%'],
-                         header=['Platform', 'Launches', '% Share']))
+        # Top-right: Total aggregate
+        axs[0, 1].plot(self.df_total['date'], self.df_total['ma7'], color='purple', linewidth=3.5, label='7-Day MA Total')
+        axs[0, 1].plot(self.df_total['date'], self.df_total['total_daily'], color='purple', alpha=0.25, label='Raw Daily Total')
+        axs[0, 1].set_title("Total Daily Memecoins Across All Platforms\n(7-Day Moving Average)", fontsize=16, pad=15)
+        axs[0, 1].set_ylabel("Avg Daily Creations", fontsize=12)
+        axs[0, 1].legend(fontsize=11)
+        axs[0, 1].grid(True, alpha=0.3)
 
-# ============== COMBINED DASHBOARD (2x2) ==============
-timestamp = datetime.now().strftime("%Y%m%d_%H%M")
-today = datetime.now().strftime("%B %d, %Y")
+        # Bottom-left: Market share % with vibrant colors (Pump orange at bottom)
+        order = ['Pumpdotfun'] + [col for col in self.df_share.columns if col != 'Pumpdotfun']
+        self.df_share = self.df_share[order]
 
-fig, axs = plt.subplots(2, 2, figsize=(24, 16), dpi=120)
+        colors = {
+            'Pumpdotfun': '#FF6600',
+            'LetsBonk':   '#8E44FF',
+            'Moonshot':   '#FF33CC',
+            'Bags':       '#00CCFF',
+            'Boop':       '#33FF99',
+            'Believeapp': '#FF1493',
+            'Jup Studio': '#FF4500',
+            'Moon.it':    '#A0522D',
+            'Wavebreak':  '#FFD700'
+        }
+        color_list = [colors.get(col, '#555555') for col in self.df_share.columns]
 
-# Top-left: Per-platform 7DMA lines
-for platform in df_ma[platform_col].unique():
-    subset = df_ma[df_ma[platform_col] == platform]
-    axs[0, 0].plot(subset['date'], subset[count_col], label=platform, linewidth=2.8)
-axs[0, 0].set_title("7-Day MA — Daily Memecoins by Platform", fontsize=16, pad=15)
-axs[0, 0].set_ylabel("Avg Daily Creations", fontsize=12)
-axs[0, 0].legend(title="Platform", bbox_to_anchor=(1.02, 1), loc='upper left', fontsize=10)
-axs[0, 0].grid(True, alpha=0.3)
+        self.df_share.plot.area(stacked=True, alpha=0.92, linewidth=0.6, ax=axs[1, 0], color=color_list)
+        axs[1, 0].set_title("Platform Market Share % — Daily Launches", fontsize=16, pad=15)
+        axs[1, 0].set_ylabel("Share of Total (%)", fontsize=12)
+        axs[1, 0].legend(title="Platform", bbox_to_anchor=(1.02, 1), loc='upper left', fontsize=9.5)
+        axs[1, 0].grid(True, alpha=0.3)
 
-# Top-right: Total aggregate
-axs[0, 1].plot(df_total['date'], df_total['ma7'], color='purple', linewidth=3.5, label='7-Day MA Total')
-axs[0, 1].plot(df_total['date'], df_total['total_daily'], color='purple', alpha=0.25, label='Raw Daily Total')
-axs[0, 1].set_title("Total Daily Memecoins Across All Platforms\n(7-Day Moving Average)", fontsize=16, pad=15)
-axs[0, 1].set_ylabel("Avg Daily Creations", fontsize=12)
-axs[0, 1].legend(fontsize=11)
-axs[0, 1].grid(True, alpha=0.3)
+        # Bottom-right: Cumulative
+        self.df_pivot_cum.plot.area(stacked=True, alpha=0.85, linewidth=0.5, ax=axs[1, 1])
+        axs[1, 1].set_title("Cumulative Memecoins Created by Platform", fontsize=16, pad=15)
+        axs[1, 1].set_ylabel("Total Tokens Deployed", fontsize=12)
+        axs[1, 1].legend(title="Platform", bbox_to_anchor=(1.02, 1), loc='upper left', fontsize=9.5)
+        axs[1, 1].grid(True, alpha=0.3)
 
-# Bottom-left: Market share % — FIXED COLORS
-order = ['Pumpdotfun'] + [col for col in df_share.columns if col != 'Pumpdotfun']
-df_share = df_share[order]
+        fig.suptitle(f"Memecoin Launch Dashboard — {today}\nPump.fun • Moonshot • LetsBonk • etc.", 
+                     fontsize=22, fontweight='bold', y=0.98)
 
-# Full vibrant color palette (Pump orange at bottom)
-colors = {
-    'Pumpdotfun': '#FF6600',   # classic Pump orange
-    'LetsBonk':   '#8E44FF',   # vibrant purple
-    'Moonshot':   '#FF33CC',   # hot pink
-    'Bags':       '#00CCFF',   # bright cyan
-    'Boop':       '#33FF99',   # lime green
-    'Believeapp': '#FF1493',   # deep pink
-    'Jup Studio': '#FF4500',   # red-orange
-    'Moon.it':    '#A0522D',   # sienna
-    'Wavebreak':  '#FFD700'    # gold
-}
+        plt.tight_layout(rect=[0, 0, 1, 0.94])
 
-color_list = [colors.get(col, '#555555') for col in df_share.columns]
+        # SAVE TO FIXED FILENAME (overwrites every run)
+        plt.savefig(self.OUTPUT_FILE, dpi=120, bbox_inches='tight', facecolor='white')
+        print(f"\n✅ DASHBOARD SAVED → {self.OUTPUT_FILE}  (2880×1920 px)")
+        plt.close()
 
-df_share.plot.area(stacked=True, alpha=0.92, linewidth=0.6, ax=axs[1, 0], color=color_list)
-axs[1, 0].set_title("Platform Market Share % — Daily Launches", fontsize=16, pad=15)
-axs[1, 0].set_ylabel("Share of Total (%)", fontsize=12)
-axs[1, 0].legend(title="Platform", bbox_to_anchor=(1.02, 1), loc='upper left', fontsize=9.5)
-axs[1, 0].grid(True, alpha=0.3)
+    def run(self):
+        self.fetch_data()
+        self.compute_metrics()
+        self.print_market_share()
+        self.generate_dashboard()
+        print("\n🚀 Dashboard ready! Open memecoin_dashboard.png")
 
-# Bottom-right: Cumulative
-df_pivot_cum.plot.area(stacked=True, alpha=0.85, linewidth=0.5, ax=axs[1, 1])
-axs[1, 1].set_title("Cumulative Memecoins Created by Platform", fontsize=16, pad=15)
-axs[1, 1].set_ylabel("Total Tokens Deployed", fontsize=12)
-axs[1, 1].legend(title="Platform", bbox_to_anchor=(1.02, 1), loc='upper left', fontsize=9.5)
-axs[1, 1].grid(True, alpha=0.3)
-
-fig.suptitle(f"Memecoin Launch Dashboard — {today}\nPump.fun • Moonshot • LetsBonk • etc.", 
-             fontsize=22, fontweight='bold', y=0.98)
-
-plt.tight_layout(rect=[0, 0, 1, 0.94])
-
-output_file = f"memecoin_dashboard_{timestamp}.png"
-plt.savefig(output_file, dpi=120, bbox_inches='tight', facecolor='white')
-print(f"\n✅ DASHBOARD SAVED → {output_file}  (2880×1920 px)")
-plt.close()
-
-print("\n🚀 Now every platform has its own bright color — market share chart should look 🔥")
+# ============== RUN IT ==============
+if __name__ == "__main__":
+    dashboard = MemecoinDashboard()
+    dashboard.run()
