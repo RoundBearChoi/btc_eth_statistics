@@ -10,6 +10,7 @@ class CryptoPriceFetcher:
     # This map fixes the most common ones (easy to extend)
     TICKER_MAPPING = {
         "UNI": "UNI7083-USD",   # Uniswap (not UNICORN Token)
+        "FART": "FARTCOIN-USD", # ← The popular Solana Fartcoin (not the tiny Base one)
         # Add more here later if needed, e.g.
         # "AAVE": "AAVE-USD",
         # "SUSHI": "SUSHI-USD",
@@ -52,7 +53,7 @@ class CryptoPriceFetcher:
             self.symbol2: self.name2
         })
         
-        # Force column order to always match user input (SOL first, then RAY, etc.)
+        # Force column order to always match user input (SOL first, then FART, etc.)
         closing_prices = closing_prices[[self.name1, self.name2]]
         
         closing_prices = closing_prices.dropna()
@@ -70,7 +71,7 @@ if __name__ == "__main__":
         print("Usage: python getPrices.py <token1> <token2>")
         print("Example: python getPrices.py btc eth")
         print("         python getPrices.py eth uni")
-        print("         python getPrices.py sol ray")
+        print("         python getPrices.py sol fart")
         sys.exit(1)
 
     token1 = sys.argv[1]
