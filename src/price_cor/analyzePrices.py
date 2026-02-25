@@ -1,4 +1,3 @@
-# analyzePrices.py
 import sys
 import os
 import pandas as pd
@@ -9,7 +8,7 @@ import statsmodels.api as sm
 from statsmodels.tsa.stattools import coint
 
 sns.set_style("darkgrid")
-plt.rcParams['figure.figsize'] = (14, 10)
+plt.rcParams['figure.figsize'] = (15, 12.2)   # Taller figure for header space
 
 class PriceAnalyzer:
     def __init__(self, token1: str, token2: str):
@@ -54,21 +53,18 @@ class PriceAnalyzer:
         hl_lambda = reg.params.iloc[-1]
         half_life = -np.log(2) / hl_lambda if hl_lambda < 0 else np.nan
 
-        # ====================== 3 KEY METRICS ======================
+        # ====================== 3 KEY METRICS (console) ======================
         print("\n" + "="*80)
         print(f"📊 3 KEY METRICS: {col1} vs {col2}  (for Liquidity Pool)")
         print("="*80)
 
         print("1. Cointegration p-value ← #1 by far (want < 0.05, ideally < 0.01)")
-        print("   → Measures if the price ratio is stable and mean-reverting over time")
         print(f"   Cointegration p-value : {pvalue:.4f}\n")
 
         print("2. Half-life ← how fast the ratio snaps back (want 10–60 days)")
-        print("   → Number of days for the spread to move halfway back to equilibrium")
         print(f"   Half-life             : {half_life:.1f} days\n" if not np.isnan(half_life) else "   Half-life             : No mean reversion detected\n")
 
         print("3. Daily return correlation ← helpful but secondary")
-        print("   → How strongly the daily % moves line up (higher is better)")
         print(f"   Daily correlation     : {corr:.4f}")
 
         print("="*80)
@@ -106,13 +102,29 @@ class PriceAnalyzer:
         ax6.axhline(-2, color='green', linestyle=':')
         ax6.set_title('Z-Score')
 
-        plt.suptitle(f'{col1} vs {col2} — 3 Key Metrics for LP', fontsize=16)
-        plt.tight_layout()
+        plt.suptitle(f'{col1} vs {col2} — 3 Key Metrics for LP', fontsize=16.5, y=0.96)
+
+        # ====================== 3 KEY METRICS ON THE PNG ======================
+        hl_str = f"{half_life:.1f} days" if not np.isnan(half_life) else "No mean reversion detected"
+
+        metrics_text = f"""                  3 KEY METRICS
+────────────────────────────────────
+   Cointegration p-value : {pvalue:.4f}
+   Half-life             : {hl_str}
+   Daily correlation     : {corr:.4f}"""
+
+        fig.text(0.5, 0.915, metrics_text,
+                 ha='center', va='top', fontsize=12,
+                 fontfamily='monospace', linespacing=1.7,
+                 bbox=dict(boxstyle='round,pad=1.1', facecolor='#e3f2fd',
+                           edgecolor='#1976d2', linewidth=2))
+
+        # Generous top space so nothing gets hidden
+        plt.tight_layout(rect=[0.02, 0.02, 0.98, 0.80])
 
         plot_file = f"{col1}_{col2}_LP_analysis.png"
-        plt.savefig(plot_file, dpi=120, bbox_inches='tight')   # 40% resolution
-        print(f"\n💾 Charts saved → {plot_file}  (120 dpi — much smaller file)")
-        # plt.show() removed → no pause
+        plt.savefig(plot_file, dpi=160, bbox_inches='tight')
+        print(f"\n💾 Charts saved → {plot_file}  (clean, no overlap, taller + sharper)")
 
         # Save full data
         df['Spread'] = spread
@@ -124,7 +136,7 @@ class PriceAnalyzer:
 if __name__ == "__main__":
     if len(sys.argv) != 3:
         print("Usage: python analyzePrices.py <token1> <token2>")
-        print("Example: python analyzePrices.py btc eth")
+        print("Example: python analyzePrices.py sol fart")
         sys.exit(1)
 
     analyzer = PriceAnalyzer(sys.argv[1], sys.argv[2])
