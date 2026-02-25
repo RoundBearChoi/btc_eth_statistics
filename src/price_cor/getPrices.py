@@ -6,13 +6,10 @@ from datetime import datetime, timedelta
 
 class CryptoPriceFetcher:
     # Yahoo Finance has naming conflicts for some popular tokens
-    # This map fixes the most common ones (easy to extend)
     TICKER_MAPPING = {
         "UNI": "UNI7083-USD",   # Uniswap (not UNICORN Token)
         "FART": "FARTCOIN-USD", # ← The popular Solana Fartcoin (not the tiny Base one)
-        # Add more here later if needed, e.g.
-        # "AAVE": "AAVE-USD",
-        # "SUSHI": "SUSHI-USD",
+        "PUMP": "PUMP36507-USD",
     }
 
     def __init__(self, token1: str, token2: str):
