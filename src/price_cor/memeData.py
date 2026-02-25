@@ -6,7 +6,7 @@ from dune_client.client import DuneClient
 
 class MemecoinDashboard:
     QUERY_ID = 4010816
-    OUTPUT_FILE = "memecoin_dashboard.png"   # ← always the same file (overwrites)
+    OUTPUT_FILE = "memecoin_dashboard.png"   # always the same file
 
     def __init__(self):
         self.dune = self._init_dune_client()
@@ -14,7 +14,6 @@ class MemecoinDashboard:
         self.platform_col = 'platform'
         self.count_col = 'daily_token_count'
         
-        # Will be populated by run()
         self.df = None
         self.df_ma = None
         self.df_total = None
@@ -23,7 +22,6 @@ class MemecoinDashboard:
         self.df_pivot_cum = None
 
     def _init_dune_client(self):
-        """Interactive Dune API key (same as before)"""
         DUNE_API_KEY = os.getenv("DUNE_API_KEY")
         if not DUNE_API_KEY:
             DUNE_API_KEY = input("🔑 Paste your full Dune API key here: ").strip()
@@ -32,8 +30,17 @@ class MemecoinDashboard:
                 exit(1)
         return DuneClient(api_key=DUNE_API_KEY)
 
+    def _normalize_platform(self, name):
+        """Clean platform names for consistency"""
+        name = str(name).strip()
+        lower = name.lower()
+        if any(x in lower for x in ['raydium', 'launchlab', 'launch lab']):
+            return 'Raydium LaunchLab'
+        if lower == 'pumpdotfun':
+            return 'Pump.fun'
+        return name
+
     def fetch_data(self):
-        """Fetch latest data from Dune (exactly the same as before)"""
         print(f"\n🔄 Fetching live data from Dune Query #{self.QUERY_ID}...")
         self.df = self.dune.get_latest_result_dataframe(self.QUERY_ID)
 
@@ -43,12 +50,13 @@ class MemecoinDashboard:
         )
         self.df = self.df.sort_values('date').dropna(subset=['date'])
 
+        # Normalize names
+        self.df[self.platform_col] = self.df[self.platform_col].apply(self._normalize_platform)
+
         print("\nLatest 5 rows preview:")
         print(self.df[['date', self.platform_col, self.count_col]].tail(5))
 
     def compute_metrics(self):
-        """Pre-compute all the dataframes used in charts + tables"""
-        # 7-day MA per platform
         self.df_ma = (
             self.df.set_index('date')
             .groupby(self.platform_col)[self.count_col]
@@ -57,11 +65,9 @@ class MemecoinDashboard:
             .reset_index()
         )
 
-        # Total aggregate
         self.df_total = self.df.groupby('date')[self.count_col].sum().reset_index(name='total_daily')
         self.df_total['ma7'] = self.df_total['total_daily'].rolling(window=7, min_periods=1).mean()
 
-        # Daily pivot for share & cumulative
         self.df_pivot = self.df.pivot(
             index='date', 
             columns=self.platform_col, 
@@ -72,7 +78,6 @@ class MemecoinDashboard:
         self.df_pivot_cum = self.df_pivot.cumsum()
 
     def print_market_share(self):
-        """Print the exact same beautiful tables as before"""
         print("\n" + "="*90)
         print("               CURRENT MARKET SHARE")
         print("="*90)
@@ -115,8 +120,6 @@ class MemecoinDashboard:
                                  header=['Platform', 'Launches', '% Share']))
 
     def generate_dashboard(self):
-        """Build the exact same 2×2 dashboard + save to fixed filename"""
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M")  # only for console log
         today = datetime.now().strftime("%B %d, %Y")
 
         fig, axs = plt.subplots(2, 2, figsize=(24, 16), dpi=120)
@@ -138,20 +141,25 @@ class MemecoinDashboard:
         axs[0, 1].legend(fontsize=11)
         axs[0, 1].grid(True, alpha=0.3)
 
-        # Bottom-left: Market share % with vibrant colors (Pump orange at bottom)
-        order = ['Pumpdotfun'] + [col for col in self.df_share.columns if col != 'Pumpdotfun']
+        # Bottom-left: Market share % — SAFE ordering (no more KeyError)
+        priority = ['Pump.fun', 'Raydium LaunchLab']
+        existing = list(self.df_share.columns)
+        order = [p for p in priority if p in existing]
+        remaining = [col for col in existing if col not in order]
+        order += remaining
         self.df_share = self.df_share[order]
 
         colors = {
-            'Pumpdotfun': '#FF6600',
-            'LetsBonk':   '#8E44FF',
-            'Moonshot':   '#FF33CC',
-            'Bags':       '#00CCFF',
-            'Boop':       '#33FF99',
-            'Believeapp': '#FF1493',
-            'Jup Studio': '#FF4500',
-            'Moon.it':    '#A0522D',
-            'Wavebreak':  '#FFD700'
+            'Pump.fun':           '#FF6600',
+            'Raydium LaunchLab':  '#39FF14',   # neon green
+            'LetsBonk':           '#8E44FF',
+            'Moonshot':           '#FF33CC',
+            'Bags':               '#00CCFF',
+            'Boop':               '#33FF99',
+            'Believeapp':         '#FF1493',
+            'Jup Studio':         '#FF4500',
+            'Moon.it':            '#A0522D',
+            'Wavebreak':          '#FFD700'
         }
         color_list = [colors.get(col, '#555555') for col in self.df_share.columns]
 
@@ -168,12 +176,12 @@ class MemecoinDashboard:
         axs[1, 1].legend(title="Platform", bbox_to_anchor=(1.02, 1), loc='upper left', fontsize=9.5)
         axs[1, 1].grid(True, alpha=0.3)
 
-        fig.suptitle(f"Memecoin Launch Dashboard — {today}\nPump.fun • Moonshot • LetsBonk • etc.", 
+        fig.suptitle(f"Memecoin Launch Dashboard — {today}\n"
+                     f"Pump.fun • Raydium LaunchLab • Moonshot • LetsBonk • etc.",
                      fontsize=22, fontweight='bold', y=0.98)
 
         plt.tight_layout(rect=[0, 0, 1, 0.94])
 
-        # SAVE TO FIXED FILENAME (overwrites every run)
         plt.savefig(self.OUTPUT_FILE, dpi=120, bbox_inches='tight', facecolor='white')
         print(f"\n✅ DASHBOARD SAVED → {self.OUTPUT_FILE}  (2880×1920 px)")
         plt.close()
