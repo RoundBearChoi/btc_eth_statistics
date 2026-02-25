@@ -124,7 +124,7 @@ class PriceAnalyzer:
 
         plot_file = f"{col1}_{col2}_LP_analysis.png"
         plt.savefig(plot_file, dpi=160, bbox_inches='tight')
-        print(f"\n💾 Charts saved → {plot_file}  (clean, no overlap, taller + sharper)")
+        print(f"\n💾 Charts saved → {plot_file}")
 
         # Save full data
         df['Spread'] = spread
