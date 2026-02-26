@@ -17,7 +17,6 @@ if len(sys.argv) > 1:
 else:
     days = 7
 
-# New DefiLlama keys (they renamed volume → total)
 key_map = {
     1:  ("total24h", "24h"),
     7:  ("total7d",  "7d"),
@@ -42,9 +41,9 @@ if "displayName" in df.columns:
 elif "name" in df.columns:
     df["display_name"] = df["name"]
 else:
-    df["display_name"] = df.index.astype(str)  # fallback
+    df["display_name"] = df.index.astype(str)
 
-# Smart column detection (in case they change again)
+# Smart column detection (in case DefiLlama changes keys again)
 if vol_key not in df.columns:
     print(f"⚠️  {vol_key} not found, checking fallbacks...")
     fallback = f"volume{period}"
@@ -61,7 +60,7 @@ if vol_key not in df.columns:
         else:
             raise KeyError("No volume column found in DefiLlama response")
 
-# Clean & rank
+# Clean & rank (highest volume first)
 df = df[df[vol_key] > 0].copy()
 df["volume_b"] = df[vol_key] / 1_000_000_000
 df = df.sort_values("volume_b", ascending=False).head(15).reset_index(drop=True)
@@ -71,27 +70,28 @@ print(f"\n=== TOP 15 DEXes by {period} Trading Volume ===")
 print(df[["display_name", "volume_b"]].round(3).to_string(index=False))
 
 # ==================== CHART ====================
-plt.figure(figsize=(14, 10))
-bars = plt.barh(df["display_name"][::-1], df["volume_b"][::-1],
+plt.figure(figsize=(11, 8))   # ← much smaller HD-friendly size
+
+bars = plt.barh(df["display_name"], df["volume_b"],
                 color='#3498db', edgecolor='black', alpha=0.85)
 
-plt.xlabel(f"{period} Trading Volume (Billions USD)", fontsize=13)
+plt.xlabel(f"{period} Trading Volume (Billions USD)", fontsize=12)
 plt.title(f"Top DEXes by {period} Volume — {datetime.now().strftime('%B %d, %Y')}",
-          fontsize=15, fontweight='bold', pad=20)
+          fontsize=14, fontweight='bold', pad=20)
 
 plt.grid(axis='x', alpha=0.3)
-plt.gca().invert_yaxis()
+plt.gca().invert_yaxis()          # ← This puts #1 at the top
 
-# Value labels
+# Value labels on bars
 for bar in bars:
     width = bar.get_width()
     plt.text(width + 0.03, bar.get_y() + bar.get_height()/2,
-             f'{width:.2f}B', va='center', fontsize=11, fontweight='medium')
+             f'{width:.2f}B', va='center', fontsize=10.5, fontweight='medium')
 
 plt.tight_layout()
 
 filename = f"top_dexes_{period}.png"
-plt.savefig(filename, dpi=300, bbox_inches='tight')
+plt.savefig(filename, dpi=250, bbox_inches='tight')  # sharp but much smaller file
 plt.close()
 
 print(f"\n✅ Chart saved → {filename}")
