@@ -8,7 +8,8 @@ from datetime import datetime, timedelta
 
 class UniswapV3StatsAnalyzer:
     """
-    Updated: 7am–10pm KST window + hourly recommendations + cleaner output.
+    Now with 4 charts: 5-bucket bar + boxplot + overall histogram + NEW hourly trend line.
+    7am–10pm KST + hourly recommendations (clean output).
     """
 
     def __init__(self, symbol: str = 'ETH/USDT', timeframe: str = '15m', days_back: int = 730):
@@ -83,6 +84,7 @@ class UniswapV3StatsAnalyzer:
         base = self.symbol.replace('/', '_')
         sns.set_style("darkgrid")
 
+        # --- 5-bucket charts (kept exactly as before — clean & beautiful) ---
         buckets = []
         bucket_names = ['07-10', '10-13', '13-16', '16-19', '19-22']
         for s, e in [('07:00','10:00'), ('10:00','13:00'), ('13:00','16:00'), ('16:00','19:00'), ('19:00','22:00')]:
@@ -90,7 +92,7 @@ class UniswapV3StatsAnalyzer:
             buckets.append(b)
         bucket_df = pd.DataFrame(dict(zip(bucket_names, buckets)))
 
-        # Chart 1: Bar
+        # Chart 1: Bar + percentiles (5 buckets)
         plt.figure(figsize=(11, 6))
         medians = [b.median() for b in buckets]
         p75 = [b.quantile(0.75) for b in buckets]
@@ -107,7 +109,7 @@ class UniswapV3StatsAnalyzer:
         plt.savefig(f"charts/{base}_bar_ranges_{ts}.png", dpi=200)
         plt.close()
 
-        # Chart 2: Box plot
+        # Chart 2: Box plot (5 buckets)
         plt.figure(figsize=(11, 6))
         sns.boxplot(data=bucket_df, palette="Blues")
         plt.ylabel('% 3h Range')
@@ -117,7 +119,7 @@ class UniswapV3StatsAnalyzer:
         plt.savefig(f"charts/{base}_boxplot_{ts}.png", dpi=200)
         plt.close()
 
-        # Chart 3: Histogram
+        # Chart 3: Overall Histogram
         plt.figure(figsize=(10, 6))
         sns.histplot(self.df_active['3h_range'], bins=80, kde=True, color='#1f77b4')
         balanced = round(self.df_active['3h_range'].quantile(0.75) * 1.10, 1)
@@ -133,7 +135,35 @@ class UniswapV3StatsAnalyzer:
         plt.savefig(f"charts/{base}_histogram_{ts}.png", dpi=200)
         plt.close()
 
-        print("✅ Charts saved to charts/ folder\n")
+        # === NEW Chart 4: Hourly Trend Line ===
+        plt.figure(figsize=(15, 6.5))
+        hourly_medians = []
+        hourly_p75 = []
+        hourly_p90 = []
+        hour_labels = []
+        for h in range(7, 22):
+            start = f"{h:02d}:00"
+            end = f"{h+1:02d}:00"
+            bucket = self.df_active.between_time(start, end)['3h_range'].dropna()
+            hourly_medians.append(bucket.median())
+            hourly_p75.append(bucket.quantile(0.75))
+            hourly_p90.append(bucket.quantile(0.90))
+            hour_labels.append(f"{h:02d}-{h+1:02d}")
+
+        x = range(len(hour_labels))
+        plt.plot(x, hourly_medians, marker='o', linewidth=3.5, color='#1f77b4', label='Median 3h range')
+        plt.plot(x, hourly_p75, marker='s', linestyle='--', linewidth=2.2, color='orange', label='75th percentile')
+        plt.plot(x, hourly_p90, marker='^', linestyle='--', linewidth=2.2, color='red', label='90th percentile')
+        plt.xticks(x, hour_labels, rotation=45, ha='right')
+        plt.ylabel('% 3h Range')
+        plt.title(f'{self.symbol} Hourly 3h Range Trend (7am–10pm KST)')
+        plt.grid(True, alpha=0.3)
+        plt.legend()
+        plt.tight_layout()
+        plt.savefig(f"charts/{base}_hourly_trend_{ts}.png", dpi=200)
+        plt.close()
+
+        print("✅ 4 Charts saved to charts/ folder (now includes beautiful hourly trend!)\n")
 
     def print_range_recommendations(self):
         print("\n" + "="*85)
