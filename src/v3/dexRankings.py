@@ -1,68 +1,101 @@
 import requests
 import pandas as pd
 import matplotlib.pyplot as plt
+import sys
 from datetime import datetime
 
-# ==================== CONFIG ====================
-VOLUME_PERIOD = "7d"    # ← Change to "30d" for 1-month ranking
-TOP_N = 15
-# ===============================================
+# ==================== CLI ARGUMENT ====================
+if len(sys.argv) > 1:
+    try:
+        days = int(sys.argv[1])
+        if days not in [1, 7, 30]:
+            print("⚠️  Only 1, 7, or 30 supported. Defaulting to 7d")
+            days = 7
+    except ValueError:
+        print("Usage: python dexRankings.py [1|7|30]")
+        sys.exit(1)
+else:
+    days = 7
 
-print(f"Fetching top DEXes by {VOLUME_PERIOD} volume...")
+# New DefiLlama keys (they renamed volume → total)
+key_map = {
+    1:  ("total24h", "24h"),
+    7:  ("total7d",  "7d"),
+    30: ("total30d", "30d")
+}
 
+vol_key, period = key_map[days]
+
+print(f"Fetching current top DEXes by {period} volume...")
+
+# ==================== FETCH ====================
 url = "https://api.llama.fi/overview/dexs"
-r = requests.get(url)
+r = requests.get(url, timeout=20)
 r.raise_for_status()
 data = r.json()
 
-# Current DefiLlama API structure (Feb 2026)
-df = pd.DataFrame(data.get("protocols", data))
+df = pd.DataFrame(data.get("protocols", []))
 
-# Robust volume column (new API uses total7d / total30d / total24h)
-vol_map = {
-    "7d":  "total7d",
-    "30d": "total30d",
-    "24h": "total24h"
-}
-vol_col = vol_map.get(VOLUME_PERIOD, "total7d")
+# Nice display name
+if "displayName" in df.columns:
+    df["display_name"] = df["displayName"]
+elif "name" in df.columns:
+    df["display_name"] = df["name"]
+else:
+    df["display_name"] = df.index.astype(str)  # fallback
 
-if vol_col not in df.columns:
-    print(f"⚠️  {vol_col} not found → checking available columns")
-    print("Available columns:", list(df.columns))
-    raise KeyError("Volume column missing – paste the printed columns so I can fix it")
-
-name_col = "displayName" if "displayName" in df.columns else "name"
+# Smart column detection (in case they change again)
+if vol_key not in df.columns:
+    print(f"⚠️  {vol_key} not found, checking fallbacks...")
+    fallback = f"volume{period}"
+    if fallback in df.columns:
+        vol_key = fallback
+        print(f"   → using fallback {fallback}")
+    else:
+        vol_cols = [col for col in df.columns if any(x in col.lower() for x in ['total', 'volume'])]
+        print(f"   Available volume columns: {vol_cols}")
+        if vol_cols:
+            vol_key = vol_cols[0]
+            period = vol_key.replace('total', '').replace('volume', '')
+            print(f"   → auto-selected {vol_key}")
+        else:
+            raise KeyError("No volume column found in DefiLlama response")
 
 # Clean & rank
-df = df.copy()
-df["volume_b"] = pd.to_numeric(df[vol_col], errors="coerce") / 1_000_000_000
-df = df.dropna(subset=["volume_b"])
-df = df[df["volume_b"] > 0.01]                     # remove noise
-df = df.sort_values("volume_b", ascending=False).head(TOP_N).reset_index(drop=True)
+df = df[df[vol_key] > 0].copy()
+df["volume_b"] = df[vol_key] / 1_000_000_000
+df = df.sort_values("volume_b", ascending=False).head(15).reset_index(drop=True)
 
-df["display_name"] = df[name_col]
-
-print(f"\n=== TOP {TOP_N} DEXes by {VOLUME_PERIOD.upper()} VOLUME ===")
+# ==================== TABLE ====================
+print(f"\n=== TOP 15 DEXes by {period} Trading Volume ===")
 print(df[["display_name", "volume_b"]].round(3).to_string(index=False))
 
-# ==================== MATPLOTLIB CHART ====================
-plt.figure(figsize=(13, 9))
-bars = plt.barh(df["display_name"][::-1], df["volume_b"][::-1], color="#2E86AB")
+# ==================== CHART ====================
+plt.figure(figsize=(14, 10))
+bars = plt.barh(df["display_name"][::-1], df["volume_b"][::-1],
+                color='#3498db', edgecolor='black', alpha=0.85)
 
-plt.title(f"Top {TOP_N} DEXes by {VOLUME_PERIOD.upper()} Trading Volume\n({datetime.now().strftime('%B %d, %Y')})",
-          fontsize=16, pad=25, fontweight="bold")
-plt.xlabel("Volume (Billions USD)", fontsize=13)
-plt.grid(axis="x", alpha=0.3)
+plt.xlabel(f"{period} Trading Volume (Billions USD)", fontsize=13)
+plt.title(f"Top DEXes by {period} Volume — {datetime.now().strftime('%B %d, %Y')}",
+          fontsize=15, fontweight='bold', pad=20)
 
-# Value labels on bars
+plt.grid(axis='x', alpha=0.3)
+plt.gca().invert_yaxis()
+
+# Value labels
 for bar in bars:
     width = bar.get_width()
-    plt.text(width + 0.08, bar.get_y() + bar.get_height()/2,
-             f"${width:.2f}B", va="center", fontsize=11, fontweight="medium")
+    plt.text(width + 0.03, bar.get_y() + bar.get_height()/2,
+             f'{width:.2f}B', va='center', fontsize=11, fontweight='medium')
 
 plt.tight_layout()
-filename = f"top_dexes_{VOLUME_PERIOD}.png"
-plt.savefig(filename, dpi=220, bbox_inches="tight")
-print(f"\n✅ Chart saved as → {filename}")
 
-plt.show()   # opens in a window (Matplotlib)
+filename = f"top_dexes_{period}.png"
+plt.savefig(filename, dpi=300, bbox_inches='tight')
+plt.close()
+
+print(f"\n✅ Chart saved → {filename}")
+print("\nUsage:")
+print("   python dexRankings.py        → 7-day (default)")
+print("   python dexRankings.py 30     → 30-day")
+print("   python dexRankings.py 1      → 24-hour")
