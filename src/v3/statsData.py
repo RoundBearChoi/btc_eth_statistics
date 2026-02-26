@@ -8,16 +8,17 @@ from datetime import datetime, timedelta
 
 class UniswapV3StatsAnalyzer:
     """
-    Now with 4 charts: 5-bucket bar + boxplot + overall histogram + NEW hourly trend line.
-    7am–10pm KST + hourly recommendations (clean output).
+    Full 24h KST analysis in ONE clean combined chart (2x2).
+    Title no longer overlaps + hourly recommendations exported to CSV.
     """
 
-    def __init__(self, symbol: str = 'ETH/USDT', timeframe: str = '15m', days_back: int = 730):
+    def __init__(self, symbol: str = 'ETH/USDT', timeframe: str = '15m', days_back: int = 730, chart_dpi: int = 165):
         self.symbol = symbol
         self.timeframe = timeframe
         self.days_back = days_back
+        self.chart_dpi = chart_dpi
         self.full_df = None
-        self.df_active = None
+        self.df_24h = None
         self.exchange = None
 
     def fetch_data(self):
@@ -42,15 +43,15 @@ class UniswapV3StatsAnalyzer:
         df = df.set_index('timestamp').sort_index()
 
         self.full_df = df.copy()
-        self.df_active = df.between_time('07:00', '22:00').copy()
+        self.df_24h = df.copy()
 
-        print(f"Loaded {len(self.df_active):,} candles (7am–10pm KST).")
+        print(f"Loaded {len(self.df_24h):,} candles (Full 24h KST).")
 
         os.makedirs('raw_data', exist_ok=True)
         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
         base = self.symbol.replace('/', '_')
         self.full_df.to_csv(f"raw_data/{base}_{self.timeframe}_full_kst_{ts}.csv")
-        self.df_active.to_csv(f"raw_data/{base}_{self.timeframe}_active_7am10pm_kst_{ts}.csv")
+        self.df_24h.to_csv(f"raw_data/{base}_{self.timeframe}_24h_kst_{ts}.csv")
         print(f"✅ Raw data saved to raw_data/\n")
 
     def compute_window_stats(self, sub_df: pd.DataFrame, label: str):
@@ -70,13 +71,14 @@ class UniswapV3StatsAnalyzer:
             print(stats.round(3))
 
             print("  Per-bucket median range:")
-            for s, e in [('07:00','10:00'), ('10:00','13:00'), ('13:00','16:00'), ('16:00','19:00'), ('19:00','22:00')]:
+            for s, e in [('00:00','03:00'), ('03:00','06:00'), ('06:00','09:00'), ('09:00','12:00'),
+                        ('12:00','15:00'), ('15:00','18:00'), ('18:00','21:00'), ('21:00','00:00')]:
                 bucket = sub_df.between_time(s, e)
-                print(f"    {s}-{e}: {bucket[f'{hours}h_range'].median():.3f}%")
+                print(f"    {s}-{e if e != '00:00' else '24:00'}: {bucket[f'{hours}h_range'].median():.3f}%")
         print("")
 
     def generate_charts(self):
-        if self.df_active is None or '3h_range' not in self.df_active.columns:
+        if self.df_24h is None or '3h_range' not in self.df_24h.columns:
             return
 
         os.makedirs('charts', exist_ok=True)
@@ -84,92 +86,90 @@ class UniswapV3StatsAnalyzer:
         base = self.symbol.replace('/', '_')
         sns.set_style("darkgrid")
 
-        # --- 5-bucket charts (kept exactly as before — clean & beautiful) ---
-        buckets = []
-        bucket_names = ['07-10', '10-13', '13-16', '16-19', '19-22']
-        for s, e in [('07:00','10:00'), ('10:00','13:00'), ('13:00','16:00'), ('16:00','19:00'), ('19:00','22:00')]:
-            b = self.df_active.between_time(s, e)['3h_range'].dropna()
-            buckets.append(b)
+        bucket_intervals = [
+            ('00:00','03:00'), ('03:00','06:00'), ('06:00','09:00'), ('09:00','12:00'),
+            ('12:00','15:00'), ('15:00','18:00'), ('18:00','21:00'), ('21:00','00:00')
+        ]
+        bucket_names = ['00-03', '03-06', '06-09', '09-12', '12-15', '15-18', '18-21', '21-24']
+
+        buckets = [self.df_24h.between_time(s, e)['3h_range'].dropna() for s, e in bucket_intervals]
         bucket_df = pd.DataFrame(dict(zip(bucket_names, buckets)))
 
-        # Chart 1: Bar + percentiles (5 buckets)
-        plt.figure(figsize=(11, 6))
+        # === ONE COMBINED CHART (2x2) ===
+        fig, axs = plt.subplots(2, 2, figsize=(22, 16), constrained_layout=False)
+
+        # Top-left: Bar
         medians = [b.median() for b in buckets]
         p75 = [b.quantile(0.75) for b in buckets]
         p90 = [b.quantile(0.90) for b in buckets]
-        x = range(5)
-        plt.bar(x, medians, color='#1f77b4', alpha=0.8, label='Median 3h range')
-        plt.errorbar(x, medians, yerr=[[0]*5, [p75[i]-medians[i] for i in x]], fmt='none', ecolor='orange', capsize=6, label='75th')
-        plt.errorbar(x, medians, yerr=[[0]*5, [p90[i]-medians[i] for i in x]], fmt='none', ecolor='red', capsize=6, label='90th')
-        plt.xticks(x, bucket_names)
-        plt.ylabel('% Range')
-        plt.title(f'{self.symbol} 3h Range by Time Bucket (7am–10pm KST)')
-        plt.legend()
-        plt.tight_layout()
-        plt.savefig(f"charts/{base}_bar_ranges_{ts}.png", dpi=200)
-        plt.close()
+        x = range(8)
+        axs[0, 0].bar(x, medians, color='#1f77b4', alpha=0.8, label='Median 3h range')
+        axs[0, 0].errorbar(x, medians, yerr=[[0]*8, [p75[i]-medians[i] for i in x]], fmt='none', ecolor='orange', capsize=6, label='75th')
+        axs[0, 0].errorbar(x, medians, yerr=[[0]*8, [p90[i]-medians[i] for i in x]], fmt='none', ecolor='red', capsize=6, label='90th')
+        axs[0, 0].set_xticks(x)
+        axs[0, 0].set_xticklabels(bucket_names)
+        axs[0, 0].set_ylabel('% Range')
+        axs[0, 0].set_title('3h Range by Time Bucket')
+        axs[0, 0].legend()
 
-        # Chart 2: Box plot (5 buckets)
-        plt.figure(figsize=(11, 6))
-        sns.boxplot(data=bucket_df, palette="Blues")
-        plt.ylabel('% 3h Range')
-        plt.title(f'{self.symbol} 3h Range Distribution by Time of Day (7am–10pm KST)')
-        plt.xlabel('Time Bucket (KST)')
-        plt.tight_layout()
-        plt.savefig(f"charts/{base}_boxplot_{ts}.png", dpi=200)
-        plt.close()
+        # Top-right: Boxplot
+        sns.boxplot(data=bucket_df, palette="Blues", ax=axs[0, 1])
+        axs[0, 1].set_ylabel('% 3h Range')
+        axs[0, 1].set_title('Distribution by Time of Day')
+        axs[0, 1].set_xlabel('Time Bucket (KST)')
 
-        # Chart 3: Overall Histogram
-        plt.figure(figsize=(10, 6))
-        sns.histplot(self.df_active['3h_range'], bins=80, kde=True, color='#1f77b4')
-        balanced = round(self.df_active['3h_range'].quantile(0.75) * 1.10, 1)
-        safe = round(self.df_active['3h_range'].quantile(0.90) * 0.82, 1)
-        agg = round(self.df_active['3h_range'].quantile(0.75) * 0.88, 1)
-        plt.axvline(balanced, color='green', linestyle='--', linewidth=2.5, label=f'Balanced ±{balanced}%')
-        plt.axvline(safe, color='red', linestyle='--', linewidth=2.5, label=f'Safe ±{safe}%')
-        plt.axvline(agg, color='purple', linestyle='--', linewidth=2.5, label=f'Aggressive ±{agg}%')
-        plt.xlabel('% 3h Range')
-        plt.title(f'{self.symbol} Overall 3h Range Distribution (7am–10pm KST, Full 2 Years)')
-        plt.legend()
-        plt.tight_layout()
-        plt.savefig(f"charts/{base}_histogram_{ts}.png", dpi=200)
-        plt.close()
+        # Bottom-left: Histogram
+        sns.histplot(self.df_24h['3h_range'], bins=80, kde=True, color='#1f77b4', ax=axs[1, 0])
+        balanced = round(self.df_24h['3h_range'].quantile(0.75) * 1.10, 1)
+        safe = round(self.df_24h['3h_range'].quantile(0.90) * 0.82, 1)
+        agg = round(self.df_24h['3h_range'].quantile(0.75) * 0.88, 1)
+        axs[1, 0].axvline(balanced, color='green', linestyle='--', linewidth=2.5, label=f'Balanced ±{balanced}%')
+        axs[1, 0].axvline(safe, color='red', linestyle='--', linewidth=2.5, label=f'Safe ±{safe}%')
+        axs[1, 0].axvline(agg, color='purple', linestyle='--', linewidth=2.5, label=f'Aggressive ±{agg}%')
+        axs[1, 0].set_xlabel('% 3h Range')
+        axs[1, 0].set_title('Overall 3h Range Distribution (~2 Years)')
+        axs[1, 0].legend()
 
-        # === NEW Chart 4: Hourly Trend Line ===
-        plt.figure(figsize=(15, 6.5))
-        hourly_medians = []
-        hourly_p75 = []
-        hourly_p90 = []
-        hour_labels = []
-        for h in range(7, 22):
+        # Bottom-right: Hourly Trend
+        hourly_medians, hourly_p75, hourly_p90, hour_labels = [], [], [], []
+        for h in range(24):
             start = f"{h:02d}:00"
-            end = f"{h+1:02d}:00"
-            bucket = self.df_active.between_time(start, end)['3h_range'].dropna()
+            end = f"{(h + 1) % 24:02d}:00"
+            bucket = self.df_24h.between_time(start, end)['3h_range'].dropna()
             hourly_medians.append(bucket.median())
             hourly_p75.append(bucket.quantile(0.75))
             hourly_p90.append(bucket.quantile(0.90))
-            hour_labels.append(f"{h:02d}-{h+1:02d}")
+            hour_labels.append(f"{h:02d}-{(h+1)%24:02d}")
 
-        x = range(len(hour_labels))
-        plt.plot(x, hourly_medians, marker='o', linewidth=3.5, color='#1f77b4', label='Median 3h range')
-        plt.plot(x, hourly_p75, marker='s', linestyle='--', linewidth=2.2, color='orange', label='75th percentile')
-        plt.plot(x, hourly_p90, marker='^', linestyle='--', linewidth=2.2, color='red', label='90th percentile')
-        plt.xticks(x, hour_labels, rotation=45, ha='right')
-        plt.ylabel('% 3h Range')
-        plt.title(f'{self.symbol} Hourly 3h Range Trend (7am–10pm KST)')
-        plt.grid(True, alpha=0.3)
-        plt.legend()
-        plt.tight_layout()
-        plt.savefig(f"charts/{base}_hourly_trend_{ts}.png", dpi=200)
+        x = range(24)
+        axs[1, 1].plot(x, hourly_medians, marker='o', linewidth=3, color='#1f77b4', label='Median 3h range')
+        axs[1, 1].plot(x, hourly_p75, marker='s', linestyle='--', linewidth=2, color='orange', label='75th')
+        axs[1, 1].plot(x, hourly_p90, marker='^', linestyle='--', linewidth=2, color='red', label='90th')
+        axs[1, 1].set_xticks(x)
+        axs[1, 1].set_xticklabels(hour_labels, rotation=45, ha='right')
+        axs[1, 1].set_ylabel('% 3h Range')
+        axs[1, 1].set_title('Hourly 3h Range Trend')
+        axs[1, 1].grid(True, alpha=0.3)
+        axs[1, 1].legend()
+
+        # Main title with safe spacing
+        fig.suptitle(
+            f'{self.symbol} Full 24h Uniswap V3 3h Range Analysis (KST)\n'
+            f'~2 Years • {len(self.df_24h):,} candles',
+            fontsize=18, y=0.96
+        )
+        fig.tight_layout(rect=[0, 0, 1, 0.93])   # ← extra top space so title never overlaps
+
+        plt.savefig(f"charts/{base}_combined_24h_{ts}.png", dpi=self.chart_dpi, bbox_inches='tight')
         plt.close()
 
-        print("✅ 4 Charts saved to charts/ folder (now includes beautiful hourly trend!)\n")
+        print(f"✅ All-in-one chart saved (no overlap!) → charts/{base}_combined_24h_{ts}.png\n")
 
     def print_range_recommendations(self):
-        print("\n" + "="*85)
-        print("🚀 UNISWAP V3 ACTIVE LP RANGE RECOMMENDATIONS (3-hour horizon)")
-        print("                 7:00 AM – 10:00 PM KST")
-        print("="*85)
+        print("\n" + "="*90)
+        print("🚀 UNISWAP V3 LP RANGE RECOMMENDATIONS (3-hour horizon)")
+        print("                      FULL 24 HOURS KST")
+        print("="*90)
 
         def print_recs(label, range_series):
             series = range_series.dropna()
@@ -185,32 +185,53 @@ class UniswapV3StatsAnalyzer:
             print(f"   Balanced     → ±{balanced}%")
             print(f"   Safe         → ±{safe}%")
             print(f"   Aggressive   → ±{agg}%")
+            return balanced, safe, agg, round(series.median(), 3), round(p75, 3), round(p90, 3), len(series)
 
-        print("Overall (full 7am–10pm):")
-        print_recs("Full Active Window", self.df_active['3h_range'])
+        # Collect data for CSV
+        recs_list = []
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        base = self.symbol.replace('/', '_')
 
-        print("\n" + "-"*70)
-        print("🕒 HOURLY RECOMMENDATIONS (3h range ending in this hour)")
-        print("-"*70)
-        for h in range(7, 22):
+        print("Overall (full 24h):")
+        res = print_recs("Full 24h", self.df_24h['3h_range'])
+        if res:
+            balanced, safe, agg, med, p75v, p90v, samples = res
+            recs_list.append(['Overall Full 24h', med, p75v, p90v, balanced, safe, agg, samples])
+
+        print("\n" + "-"*80)
+        print("🕒 HOURLY RECOMMENDATIONS")
+        print("-"*80)
+        for h in range(24):
             start = f"{h:02d}:00"
-            end   = f"{h + 1:02d}:00"
-            name  = f"🕒 {start} – {end}"
-            bucket = self.df_active.between_time(start, end)
-            print_recs(name, bucket['3h_range'])
+            end   = f"{(h + 1) % 24:02d}:00"
+            name  = f"{start} – {end}"
+            bucket = self.df_24h.between_time(start, end)
+            res = print_recs(name, bucket['3h_range'])
+            if res:
+                balanced, safe, agg, med, p75v, p90v, samples = res
+                recs_list.append([name, med, p75v, p90v, balanced, safe, agg, samples])
+
+        # === SAVE CSV ===
+        os.makedirs('charts', exist_ok=True)  # reuse charts folder
+        df_recs = pd.DataFrame(recs_list, columns=[
+            'Bucket', 'Median', 'P75', 'P90', 'Balanced', 'Safe', 'Aggressive', 'Samples'
+        ])
+        csv_path = f"charts/{base}_hourly_recommendations_{ts}.csv"
+        df_recs.to_csv(csv_path, index=False)
+        print(f"\n✅ Hourly recommendations CSV saved → {csv_path}\n")
 
         print("\n✅ Done! Run weekly for fresh numbers & charts.")
 
     def run(self):
         self.fetch_data()
-        if self.df_active is None or len(self.df_active) == 0:
+        if self.df_24h is None or len(self.df_24h) == 0:
             print("Error: No data.")
             return
 
-        now = self.df_active.index.max()
-        self.compute_window_stats(self.df_active, "FULL 2 YEARS")
-        self.compute_window_stats(self.df_active[self.df_active.index > now - pd.Timedelta(days=365)], "LAST 1 YEAR")
-        self.compute_window_stats(self.df_active[self.df_active.index > now - pd.Timedelta(days=180)], "LAST 6 MONTHS")
+        now = self.df_24h.index.max()
+        self.compute_window_stats(self.df_24h, "FULL 2 YEARS")
+        self.compute_window_stats(self.df_24h[self.df_24h.index > now - pd.Timedelta(days=365)], "LAST 1 YEAR")
+        self.compute_window_stats(self.df_24h[self.df_24h.index > now - pd.Timedelta(days=180)], "LAST 6 MONTHS")
 
         self.generate_charts()
         self.print_range_recommendations()
@@ -221,6 +242,7 @@ if __name__ == "__main__":
     analyzer = UniswapV3StatsAnalyzer(
         symbol='ETH/USDT',   # ← change to 'BTC/USDT' anytime
         timeframe='15m',
-        days_back=730
+        days_back=730,
+        chart_dpi=165        # 145 = smaller files, 180 = sharper
     )
     analyzer.run()
