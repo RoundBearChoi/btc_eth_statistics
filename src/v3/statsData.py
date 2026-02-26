@@ -11,8 +11,7 @@ from datetime import datetime, timedelta
 class UniswapV3StatsAnalyzer:
     """
     Full 24h KST analysis in ONE clean dashboard.
-    Beautiful circular Volatility Clock (no degrees, only hour labels).
-    Extra spacing — zero overlap.
+    Volatility Clock with extra top breathing room + hour numbers snug to the circle.
     """
 
     def __init__(self, symbol: str = 'ETH/USDT', timeframe: str = '15m', days_back: int = 730, chart_dpi: int = 165):
@@ -99,7 +98,7 @@ class UniswapV3StatsAnalyzer:
         buckets = [self.df_24h.between_time(s, e)['3h_range'].dropna() for s, e in bucket_intervals]
         bucket_df = pd.DataFrame(dict(zip(bucket_names, buckets)))
 
-        # Hourly data for clock + trend (with p75/p90)
+        # Hourly data
         hourly_medians = []
         hourly_p75 = []
         hourly_p90 = []
@@ -119,38 +118,35 @@ class UniswapV3StatsAnalyzer:
         high_thresh = med_series.quantile(0.67)
         for m in hourly_medians:
             if m <= low_thresh:
-                colors.append('#2ca02c')   # green - low
+                colors.append('#2ca02c')
             elif m >= high_thresh:
-                colors.append('#d62728')   # red - high
+                colors.append('#d62728')
             else:
-                colors.append('#ff7f0e')   # orange - medium
+                colors.append('#ff7f0e')
 
         # === ONE CLEAN DASHBOARD ===
-        fig = plt.figure(figsize=(22, 22.5))   # extra height for breathing room
-        gs = gridspec.GridSpec(3, 2, figure=fig, height_ratios=[3.0, 5.0, 6.0], hspace=0.35, wspace=0.28)
+        fig = plt.figure(figsize=(22, 25.5))   # extra height for more top space
+        gs = gridspec.GridSpec(3, 2, figure=fig, height_ratios=[2.5, 5.0, 6.5], hspace=0.38, wspace=0.28)
 
-        # Top: CLEAN CIRCULAR VOLATILITY CLOCK
+        # Top: VOLATILITY CLOCK
         clock_ax = fig.add_subplot(gs[0, :], projection='polar')
         theta = np.linspace(0, 2*np.pi, 24, endpoint=False)
         width = 2 * np.pi / 24
         clock_ax.bar(theta, 1.0, width=width, color=colors, edgecolor='white', linewidth=2.8)
 
         clock_ax.set_yticks([])
-        clock_ax.set_xticks([])           # ← removes degrees completely
-        clock_ax.set_xticklabels([])
-        clock_ax.set_theta_zero_location('N')   # 00 at top
-        clock_ax.set_theta_direction(-1)        # clockwise
+        clock_ax.set_xticks([])
+        clock_ax.set_theta_zero_location('N')
+        clock_ax.set_theta_direction(-1)
         clock_ax.set_title('24h Volatility Clock\n(Green = Lowest • Orange = Medium • Red = Highest)',
-                           fontsize=15, pad=40, y=1.12)
+                           fontsize=15, pad=25, y=1.05)
 
-        # Clean hour labels only (no degrees)
+        # Hour numbers CLOSER to the circle (1.26 instead of 1.42)
         for i in range(24):
             angle = i * (2 * np.pi / 24)
-            x = 1.38 * np.cos(angle)
-            y = 1.38 * np.sin(angle)
-            rotation = np.degrees(angle) - 90 if np.degrees(angle) < 180 else np.degrees(angle) + 90
-            clock_ax.text(angle, 1.42, hour_labels[i], ha='center', va='center',
-                          rotation=rotation, fontsize=10.5, fontweight='bold')
+            clock_ax.text(angle, 1.26, hour_labels[i], ha='center', va='center',
+                          rotation=(np.degrees(angle) - 90 if np.degrees(angle) < 180 else np.degrees(angle) + 90),
+                          fontsize=10.5, fontweight='bold')
 
         # Row 2: Bar + Boxplot
         ax_bar = fig.add_subplot(gs[1, 0])
@@ -198,18 +194,18 @@ class UniswapV3StatsAnalyzer:
         ax_trend.grid(True, alpha=0.3)
         ax_trend.legend()
 
-        # Main title + breathing room
+        # Main title with generous top space
         fig.suptitle(
             f'{self.symbol} Full 24h Uniswap V3 3h Range Analysis (KST)\n'
             f'~2 Years • {len(self.df_24h):,} candles',
-            fontsize=18, y=0.96
+            fontsize=18, y=0.97
         )
-        fig.subplots_adjust(top=0.92, bottom=0.06)   # ← perfect spacing
+        fig.subplots_adjust(top=0.895, bottom=0.06, hspace=0.38)   # tuned for extra top breathing room
 
         plt.savefig(f"charts/{base}_combined_24h_{ts}.png", dpi=self.chart_dpi, bbox_inches='tight')
         plt.close()
 
-        print(f"✅ Clean dashboard with beautiful Volatility Clock saved → charts/{base}_combined_24h_{ts}.png\n")
+        print(f"✅ Dashboard with more top space + closer clock numbers saved → charts/{base}_combined_24h_{ts}.png\n")
 
     def print_range_recommendations(self):
         print("\n" + "="*90)
@@ -287,6 +283,6 @@ if __name__ == "__main__":
         symbol='ETH/USDT',   # ← change to 'BTC/USDT' anytime
         timeframe='15m',
         days_back=730,
-        chart_dpi=165        # 145 = smaller files, 180 = sharper
+        chart_dpi=165        # 145 = smaller, 180 = sharper
     )
     analyzer.run()
