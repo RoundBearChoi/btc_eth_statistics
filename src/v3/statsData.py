@@ -1,24 +1,26 @@
 import ccxt
 import pandas as pd
 import pytz
+import os
 from datetime import datetime, timedelta
 
 
 class UniswapV3StatsAnalyzer:
     """
     Clean, encapsulated analyzer for Uniswap V3 active LP stats.
-    Exactly the same logic, data fetching, calculations, and output as before.
+    Exactly the same logic + now automatically saves raw data to CSV.
     """
 
     def __init__(self, symbol: str = 'ETH/USDT', timeframe: str = '15m', days_back: int = 730):
         self.symbol = symbol
         self.timeframe = timeframe
         self.days_back = days_back
-        self.df_active = None
+        self.full_df = None      # full history (KST)
+        self.df_active = None    # only 8am–8pm KST
         self.exchange = None
 
     def fetch_data(self):
-        """Fetch full history and filter to your 8am–8pm KST window."""
+        """Fetch full history, convert to KST, filter to active window, and SAVE RAW CSV."""
         print(f"Fetching {self.days_back} days of {self.timeframe} {self.symbol} data... (this takes ~20-40 seconds)")
 
         self.exchange = ccxt.binance({'enableRateLimit': True})
@@ -40,8 +42,26 @@ class UniswapV3StatsAnalyzer:
         df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms', utc=True).dt.tz_convert('Asia/Seoul')
         df = df.set_index('timestamp').sort_index()
 
+        # Store both versions
+        self.full_df = df.copy()
         self.df_active = df.between_time('08:00', '20:00').copy()
-        print(f"Loaded {len(self.df_active):,} candles during 8am–8pm KST.\n")
+
+        print(f"Loaded {len(self.df_active):,} candles during 8am–8pm KST.")
+
+        # ============== SAVE RAW DATA TO CSV ==============
+        os.makedirs('raw_data', exist_ok=True)
+        timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+        base = self.symbol.replace('/', '_')
+
+        full_path = f"raw_data/{base}_{self.timeframe}_full_kst_{timestamp_str}.csv"
+        active_path = f"raw_data/{base}_{self.timeframe}_active_8am8pm_kst_{timestamp_str}.csv"
+
+        self.full_df.to_csv(full_path)
+        self.df_active.to_csv(active_path)
+
+        print(f"✅ Raw data saved to 'raw_data/' folder:")
+        print(f"   • Full history : {full_path.split('/')[-1]}")
+        print(f"   • Active window: {active_path.split('/')[-1]}\n")
 
     def compute_window_stats(self, sub_df: pd.DataFrame, label: str):
         """Compute and print exactly the same stats as before."""
@@ -50,7 +70,6 @@ class UniswapV3StatsAnalyzer:
         for hours in [2, 3]:
             periods = int(hours * 60 / 15) if self.timeframe == '15m' else hours
 
-            # Add rolling columns (same as original)
             sub_df[f'{hours}h_return'] = sub_df['close'].pct_change(periods) * 100
             sub_df[f'{hours}h_range'] = (
                 sub_df['high'].rolling(periods).max() -
@@ -63,7 +82,6 @@ class UniswapV3StatsAnalyzer:
             )
             print(stats.round(3))
 
-            # Per-bucket medians (exactly your 3-hour segments)
             print("  Per-bucket median range:")
             for s, e in [('08:00','11:00'), ('11:00','14:00'), ('14:00','17:00'), ('17:00','20:00')]:
                 bucket = sub_df.between_time(s, e)
@@ -89,11 +107,9 @@ class UniswapV3StatsAnalyzer:
             print(f"   Safe         → ±{safe}%      ← Very few rebalances")
             print(f"   Aggressive   → ±{agg}%      ← Max fee collection")
 
-        # Overall
         print("Overall (full 8am–8pm):")
         print_recs("Full Day", self.df_active['3h_range'])
 
-        # Time-of-day specific
         print("\nTime-of-Day Specific (recommended for you):")
         for start, end, name in [
             ('08:00','11:00', '🌅 08:00 – 11:00'),
@@ -108,7 +124,7 @@ class UniswapV3StatsAnalyzer:
         print("   Run this script weekly — it will auto-update as market regimes change.")
 
     def run(self):
-        """Run everything exactly like the old script."""
+        """Run everything exactly like before (now with auto CSV save)."""
         self.fetch_data()
 
         if self.df_active is None or len(self.df_active) == 0:
@@ -134,7 +150,7 @@ class UniswapV3StatsAnalyzer:
 if __name__ == "__main__":
     # ================== CONFIGURATION ==================
     analyzer = UniswapV3StatsAnalyzer(
-        symbol='ETH/USDT',      # ← Change to 'BTC/USDT' or any pair here
+        symbol='ETH/USDT',      # ← Change to 'BTC/USDT' or any pair
         timeframe='15m',
         days_back=730
     )
