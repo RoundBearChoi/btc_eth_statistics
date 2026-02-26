@@ -4,12 +4,15 @@ import pytz
 import os
 import matplotlib.pyplot as plt
 import seaborn as sns
+import matplotlib.gridspec as gridspec
+import numpy as np
 from datetime import datetime, timedelta
 
 class UniswapV3StatsAnalyzer:
     """
-    Full 24h KST analysis in ONE clean combined chart (2x2).
-    Title no longer overlaps + hourly recommendations exported to CSV.
+    Full 24h KST analysis in ONE clean dashboard.
+    Beautiful circular Volatility Clock (no degrees, only hour labels).
+    Extra spacing — zero overlap.
     """
 
     def __init__(self, symbol: str = 'ETH/USDT', timeframe: str = '15m', days_back: int = 730, chart_dpi: int = 165):
@@ -86,6 +89,7 @@ class UniswapV3StatsAnalyzer:
         base = self.symbol.replace('/', '_')
         sns.set_style("darkgrid")
 
+        # Prepare data
         bucket_intervals = [
             ('00:00','03:00'), ('03:00','06:00'), ('06:00','09:00'), ('09:00','12:00'),
             ('12:00','15:00'), ('15:00','18:00'), ('18:00','21:00'), ('21:00','00:00')
@@ -95,43 +99,13 @@ class UniswapV3StatsAnalyzer:
         buckets = [self.df_24h.between_time(s, e)['3h_range'].dropna() for s, e in bucket_intervals]
         bucket_df = pd.DataFrame(dict(zip(bucket_names, buckets)))
 
-        # === ONE COMBINED CHART (2x2) ===
-        fig, axs = plt.subplots(2, 2, figsize=(22, 16), constrained_layout=False)
+        # Hourly data for clock + trend (with p75/p90)
+        hourly_medians = []
+        hourly_p75 = []
+        hourly_p90 = []
+        colors = []
+        hour_labels = [f"{h:02d}" for h in range(24)]
 
-        # Top-left: Bar
-        medians = [b.median() for b in buckets]
-        p75 = [b.quantile(0.75) for b in buckets]
-        p90 = [b.quantile(0.90) for b in buckets]
-        x = range(8)
-        axs[0, 0].bar(x, medians, color='#1f77b4', alpha=0.8, label='Median 3h range')
-        axs[0, 0].errorbar(x, medians, yerr=[[0]*8, [p75[i]-medians[i] for i in x]], fmt='none', ecolor='orange', capsize=6, label='75th')
-        axs[0, 0].errorbar(x, medians, yerr=[[0]*8, [p90[i]-medians[i] for i in x]], fmt='none', ecolor='red', capsize=6, label='90th')
-        axs[0, 0].set_xticks(x)
-        axs[0, 0].set_xticklabels(bucket_names)
-        axs[0, 0].set_ylabel('% Range')
-        axs[0, 0].set_title('3h Range by Time Bucket')
-        axs[0, 0].legend()
-
-        # Top-right: Boxplot
-        sns.boxplot(data=bucket_df, palette="Blues", ax=axs[0, 1])
-        axs[0, 1].set_ylabel('% 3h Range')
-        axs[0, 1].set_title('Distribution by Time of Day')
-        axs[0, 1].set_xlabel('Time Bucket (KST)')
-
-        # Bottom-left: Histogram
-        sns.histplot(self.df_24h['3h_range'], bins=80, kde=True, color='#1f77b4', ax=axs[1, 0])
-        balanced = round(self.df_24h['3h_range'].quantile(0.75) * 1.10, 1)
-        safe = round(self.df_24h['3h_range'].quantile(0.90) * 0.82, 1)
-        agg = round(self.df_24h['3h_range'].quantile(0.75) * 0.88, 1)
-        axs[1, 0].axvline(balanced, color='green', linestyle='--', linewidth=2.5, label=f'Balanced ±{balanced}%')
-        axs[1, 0].axvline(safe, color='red', linestyle='--', linewidth=2.5, label=f'Safe ±{safe}%')
-        axs[1, 0].axvline(agg, color='purple', linestyle='--', linewidth=2.5, label=f'Aggressive ±{agg}%')
-        axs[1, 0].set_xlabel('% 3h Range')
-        axs[1, 0].set_title('Overall 3h Range Distribution (~2 Years)')
-        axs[1, 0].legend()
-
-        # Bottom-right: Hourly Trend
-        hourly_medians, hourly_p75, hourly_p90, hour_labels = [], [], [], []
         for h in range(24):
             start = f"{h:02d}:00"
             end = f"{(h + 1) % 24:02d}:00"
@@ -139,31 +113,103 @@ class UniswapV3StatsAnalyzer:
             hourly_medians.append(bucket.median())
             hourly_p75.append(bucket.quantile(0.75))
             hourly_p90.append(bucket.quantile(0.90))
-            hour_labels.append(f"{h:02d}-{(h+1)%24:02d}")
 
-        x = range(24)
-        axs[1, 1].plot(x, hourly_medians, marker='o', linewidth=3, color='#1f77b4', label='Median 3h range')
-        axs[1, 1].plot(x, hourly_p75, marker='s', linestyle='--', linewidth=2, color='orange', label='75th')
-        axs[1, 1].plot(x, hourly_p90, marker='^', linestyle='--', linewidth=2, color='red', label='90th')
-        axs[1, 1].set_xticks(x)
-        axs[1, 1].set_xticklabels(hour_labels, rotation=45, ha='right')
-        axs[1, 1].set_ylabel('% 3h Range')
-        axs[1, 1].set_title('Hourly 3h Range Trend')
-        axs[1, 1].grid(True, alpha=0.3)
-        axs[1, 1].legend()
+        med_series = pd.Series(hourly_medians)
+        low_thresh = med_series.quantile(0.33)
+        high_thresh = med_series.quantile(0.67)
+        for m in hourly_medians:
+            if m <= low_thresh:
+                colors.append('#2ca02c')   # green - low
+            elif m >= high_thresh:
+                colors.append('#d62728')   # red - high
+            else:
+                colors.append('#ff7f0e')   # orange - medium
 
-        # Main title with safe spacing
+        # === ONE CLEAN DASHBOARD ===
+        fig = plt.figure(figsize=(22, 22.5))   # extra height for breathing room
+        gs = gridspec.GridSpec(3, 2, figure=fig, height_ratios=[3.0, 5.0, 6.0], hspace=0.35, wspace=0.28)
+
+        # Top: CLEAN CIRCULAR VOLATILITY CLOCK
+        clock_ax = fig.add_subplot(gs[0, :], projection='polar')
+        theta = np.linspace(0, 2*np.pi, 24, endpoint=False)
+        width = 2 * np.pi / 24
+        clock_ax.bar(theta, 1.0, width=width, color=colors, edgecolor='white', linewidth=2.8)
+
+        clock_ax.set_yticks([])
+        clock_ax.set_xticks([])           # ← removes degrees completely
+        clock_ax.set_xticklabels([])
+        clock_ax.set_theta_zero_location('N')   # 00 at top
+        clock_ax.set_theta_direction(-1)        # clockwise
+        clock_ax.set_title('24h Volatility Clock\n(Green = Lowest • Orange = Medium • Red = Highest)',
+                           fontsize=15, pad=40, y=1.12)
+
+        # Clean hour labels only (no degrees)
+        for i in range(24):
+            angle = i * (2 * np.pi / 24)
+            x = 1.38 * np.cos(angle)
+            y = 1.38 * np.sin(angle)
+            rotation = np.degrees(angle) - 90 if np.degrees(angle) < 180 else np.degrees(angle) + 90
+            clock_ax.text(angle, 1.42, hour_labels[i], ha='center', va='center',
+                          rotation=rotation, fontsize=10.5, fontweight='bold')
+
+        # Row 2: Bar + Boxplot
+        ax_bar = fig.add_subplot(gs[1, 0])
+        medians = [b.median() for b in buckets]
+        p75 = [b.quantile(0.75) for b in buckets]
+        p90 = [b.quantile(0.90) for b in buckets]
+        x = range(8)
+        ax_bar.bar(x, medians, color='#1f77b4', alpha=0.8, label='Median 3h range')
+        ax_bar.errorbar(x, medians, yerr=[[0]*8, [p75[i]-medians[i] for i in x]], fmt='none', ecolor='orange', capsize=6, label='75th')
+        ax_bar.errorbar(x, medians, yerr=[[0]*8, [p90[i]-medians[i] for i in x]], fmt='none', ecolor='red', capsize=6, label='90th')
+        ax_bar.set_xticks(x)
+        ax_bar.set_xticklabels(bucket_names)
+        ax_bar.set_ylabel('% Range')
+        ax_bar.set_title('3h Range by Time Bucket')
+        ax_bar.legend()
+
+        ax_box = fig.add_subplot(gs[1, 1])
+        sns.boxplot(data=bucket_df, palette="Blues", ax=ax_box)
+        ax_box.set_ylabel('% 3h Range')
+        ax_box.set_title('Distribution by Time of Day')
+        ax_box.set_xlabel('Time Bucket (KST)')
+
+        # Row 3: Histogram + Hourly Trend
+        ax_hist = fig.add_subplot(gs[2, 0])
+        sns.histplot(self.df_24h['3h_range'], bins=80, kde=True, color='#1f77b4', ax=ax_hist)
+        balanced = round(self.df_24h['3h_range'].quantile(0.75) * 1.10, 1)
+        safe = round(self.df_24h['3h_range'].quantile(0.90) * 0.82, 1)
+        agg = round(self.df_24h['3h_range'].quantile(0.75) * 0.88, 1)
+        ax_hist.axvline(balanced, color='green', linestyle='--', linewidth=2.5, label=f'Balanced ±{balanced}%')
+        ax_hist.axvline(safe, color='red', linestyle='--', linewidth=2.5, label=f'Safe ±{safe}%')
+        ax_hist.axvline(agg, color='purple', linestyle='--', linewidth=2.5, label=f'Aggressive ±{agg}%')
+        ax_hist.set_xlabel('% 3h Range')
+        ax_hist.set_title('Overall 3h Range Distribution (~2 Years)')
+        ax_hist.legend()
+
+        ax_trend = fig.add_subplot(gs[2, 1])
+        x_trend = range(24)
+        ax_trend.plot(x_trend, hourly_medians, marker='o', linewidth=3, color='#1f77b4', label='Median 3h range')
+        ax_trend.plot(x_trend, hourly_p75, marker='s', linestyle='--', linewidth=2, color='orange', label='75th')
+        ax_trend.plot(x_trend, hourly_p90, marker='^', linestyle='--', linewidth=2, color='red', label='90th')
+        ax_trend.set_xticks(x_trend)
+        ax_trend.set_xticklabels(hour_labels, rotation=45, ha='right')
+        ax_trend.set_ylabel('% 3h Range')
+        ax_trend.set_title('Hourly 3h Range Trend')
+        ax_trend.grid(True, alpha=0.3)
+        ax_trend.legend()
+
+        # Main title + breathing room
         fig.suptitle(
             f'{self.symbol} Full 24h Uniswap V3 3h Range Analysis (KST)\n'
             f'~2 Years • {len(self.df_24h):,} candles',
             fontsize=18, y=0.96
         )
-        fig.tight_layout(rect=[0, 0, 1, 0.93])   # ← extra top space so title never overlaps
+        fig.subplots_adjust(top=0.92, bottom=0.06)   # ← perfect spacing
 
         plt.savefig(f"charts/{base}_combined_24h_{ts}.png", dpi=self.chart_dpi, bbox_inches='tight')
         plt.close()
 
-        print(f"✅ All-in-one chart saved (no overlap!) → charts/{base}_combined_24h_{ts}.png\n")
+        print(f"✅ Clean dashboard with beautiful Volatility Clock saved → charts/{base}_combined_24h_{ts}.png\n")
 
     def print_range_recommendations(self):
         print("\n" + "="*90)
@@ -187,7 +233,6 @@ class UniswapV3StatsAnalyzer:
             print(f"   Aggressive   → ±{agg}%")
             return balanced, safe, agg, round(series.median(), 3), round(p75, 3), round(p90, 3), len(series)
 
-        # Collect data for CSV
         recs_list = []
         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
         base = self.symbol.replace('/', '_')
@@ -211,8 +256,7 @@ class UniswapV3StatsAnalyzer:
                 balanced, safe, agg, med, p75v, p90v, samples = res
                 recs_list.append([name, med, p75v, p90v, balanced, safe, agg, samples])
 
-        # === SAVE CSV ===
-        os.makedirs('charts', exist_ok=True)  # reuse charts folder
+        os.makedirs('charts', exist_ok=True)
         df_recs = pd.DataFrame(recs_list, columns=[
             'Bucket', 'Median', 'P75', 'P90', 'Balanced', 'Safe', 'Aggressive', 'Samples'
         ])
