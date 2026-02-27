@@ -1,135 +1,129 @@
 import requests
 import pandas as pd
 import time
-from datetime import datetime, UTC
-from pathlib import Path
+from datetime import datetime, timezone   # ← ADDED timezone
 from typing import Optional
+
 
 class AerodromeSlipstreamFetcher:
     """
-    Smart resume-capable fetcher for Aerodrome Slipstream pools on Base.
-    - First run: full history
-    - Future runs: ONLY new candles since last save
-    - Clear progress: shows the newest date on every page
+    Robust fetcher for Aerodrome Slipstream pools.
+    Now supports max_years limit (default = 2 years) + FULL contract address in filename.
+    DeprecationWarning for utcfromtimestamp completely fixed.
     """
-    
+
     def __init__(self, pool_address: str, network: str = "base"):
         self.pool_address = pool_address.lower()
         self.network = network
         self.base_url = f"https://api.geckoterminal.com/api/v2/networks/{network}/pools/{pool_address}/ohlcv/minute"
         self.session = requests.Session()
         self.session.headers.update({"Accept": "application/json"})
-    
-    def _fetch_batch(self, currency: str, before_ts: Optional[int] = None, aggregate: int = 15, limit: int = 500) -> list:
-        params = {"aggregate": aggregate, "limit": limit, "currency": currency}
-        if before_ts is not None:
-            params["before_timestamp"] = before_ts
-            
-        for attempt in range(6):
-            resp = self.session.get(self.base_url, params=params)
-            
-            if resp.status_code == 200:
-                data = resp.json()
+
+    def _fetch_batch(self, currency: str, before_ts: Optional[int] = None, aggregate: int = 15, limit: int = 500, retries: int = 5) -> list:
+        """Fetch one batch with smart retry on 429"""
+        for attempt in range(retries + 1):
+            params = {"aggregate": aggregate, "limit": limit, "currency": currency}
+            if before_ts:
+                params["before_timestamp"] = before_ts
+
+            response = self.session.get(self.base_url, params=params)
+
+            if response.status_code == 200:
+                data = response.json()
                 return data.get("data", {}).get("attributes", {}).get("ohlcv_list", [])
-            
-            if resp.status_code == 429:
-                wait = (2 ** attempt) * 7
-                print(f"   ⏳ Rate limit hit — waiting {wait}s...")
+
+            if response.status_code == 429:
+                wait = (2 ** attempt) * 5
+                print(f" ⏳ Rate limit hit (429). Waiting {wait}s before retry {attempt+1}/{retries}...")
                 time.sleep(wait)
                 continue
-            print(f"❌ Error {resp.status_code} for {currency}")
+
+            print(f"❌ Error {response.status_code} (currency={currency}): {response.text[:150]}")
             return []
+
+        print(f"❌ Failed after {retries} retries for currency={currency}")
         return []
-    
-    def fetch_full_history(self, aggregate: int = 15, csv_path: Optional[str] = None) -> pd.DataFrame:
-        if csv_path is None:
-            csv_path = f"aerodrome_{self.pool_address[:8]}_15min_full.csv"
-        
-        csv_path = Path(csv_path)
-        existing_df = None
-        last_saved_ts = None
-        
-        if csv_path.exists():
-            print(f"📂 Found existing file: {csv_path.name} — resuming...")
-            existing_df = pd.read_csv(csv_path, parse_dates=['datetime'], index_col='datetime')
-            last_saved_ts = int(existing_df['timestamp'].max())
-            last_dt = datetime.fromtimestamp(last_saved_ts, tz=UTC)
-            print(f"   Last saved: {last_dt.strftime('%Y-%m-%d %H:%M:%S')} UTC")
-        
+
+    def fetch_full_history(self, aggregate: int = 15, save_csv: bool = True, 
+                           filename: Optional[str] = None, max_years: Optional[float] = 2.0) -> pd.DataFrame:
+        """Fetch history with optional max age limit (default 2 years)"""
         all_usd = []
         all_ratio = []
         before_ts = None
         page = 0
-        
-        print("🚀 Starting smart fetch...")
-        
-        while page < 200:
-            print(f"   Page {page + 1}...", end=" ")
-            
+        max_pages = 300  # hard safety net
+
+        print(f"🚀 Starting robust fetch for pool {self.pool_address[:10]}... (USD + internal ratio)")
+
+        # Calculate cutoff for max_years
+        cutoff_ts = None
+        if max_years is not None:
+            cutoff_ts = int(time.time()) - int(max_years * 365.25 * 24 * 3600)
+            cutoff_date = datetime.fromtimestamp(cutoff_ts, tz=timezone.utc).strftime('%Y-%m-%d')  # ← FIXED
+            print(f"📅 Capping at max {max_years} years → ignoring anything before {cutoff_date}")
+
+        while page < max_pages:
             batch_usd = self._fetch_batch("usd", before_ts, aggregate)
             batch_ratio = self._fetch_batch("token", before_ts, aggregate)
-            
+
             if not batch_usd or not batch_ratio:
-                print("✅ No more new data.")
+                print("✅ Reached end of available data.")
                 break
-                
+
+            # Page info with date range
+            first_date = datetime.fromtimestamp(batch_usd[0][0], tz=timezone.utc).strftime('%Y-%m-%d %H:%M UTC')  # ← FIXED
+            oldest_in_batch_ts = batch_usd[-1][0]
+            oldest_date = datetime.fromtimestamp(oldest_in_batch_ts, tz=timezone.utc).strftime('%Y-%m-%d')  # ← FIXED
+            print(f" Page {page + 1:2d}... {first_date} → {oldest_date}")
+
+            # Enforce 2-year limit
+            if cutoff_ts is not None and oldest_in_batch_ts < cutoff_ts:
+                print(f"   → Hit {max_years}-year limit. Trimming last batch...")
+                batch_usd = [c for c in batch_usd if c[0] >= cutoff_ts]
+                batch_ratio = [c for c in batch_ratio if c[0] >= cutoff_ts]
+                if not batch_usd:
+                    print("✅ Stopped at max 2-year limit.")
+                    break
+
             all_usd.extend(batch_usd)
             all_ratio.extend(batch_ratio)
-            
-            # Show the newest candle in this batch
-            newest_ts = batch_usd[0][0]   # first item = newest
-            newest_dt = datetime.fromtimestamp(newest_ts, tz=UTC)
-            print(f"→ newest candle at {newest_dt.strftime('%Y-%m-%d %H:%M:%S')} UTC")
-            
-            before_ts = newest_ts - 1
-            
-            # If we already have this data, stop
-            if last_saved_ts and newest_ts <= last_saved_ts:
-                print("   No newer data found.")
-                break
-                
+
+            before_ts = batch_usd[-1][0] - 1
+
             if len(batch_usd) < 400:
                 break
-                
-            time.sleep(2.3)
+
+            time.sleep(2.2)  # safe rate limit
             page += 1
-        
-        if not all_usd:
-            print("⚠️ No new candles fetched this run.")
-            return existing_df if existing_df is not None else pd.DataFrame()
-        
-        # Build new data
-        df_new_usd = pd.DataFrame(all_usd, columns=['timestamp', 'open_usd', 'high_usd', 'low_usd', 'close_usd', 'volume_usd'])
-        df_new_ratio = pd.DataFrame(all_ratio, columns=['timestamp', 'open_ratio', 'high_ratio', 'low_ratio', 'close_ratio', 'volume_ratio'])
-        
-        df_new = pd.merge(df_new_usd, df_new_ratio, on='timestamp')
-        df_new['datetime'] = pd.to_datetime(df_new['timestamp'], unit='s')
-        df_new = df_new.set_index('datetime').sort_index()
-        df_new['close_cbbtc_usd'] = df_new['close_usd'] / df_new['close_ratio']
-        
-        # Merge
-        if existing_df is not None:
-            df = pd.concat([existing_df, df_new])
-            df = df[~df.index.duplicated(keep='last')].sort_index()
-            print(f"   Added {len(df_new)} new candles → Total now: {len(df):,}")
-        else:
-            df = df_new
-            print(f"   Full history downloaded: {len(df):,} candles")
-        
-        df.to_csv(csv_path)
-        print(f"💾 Saved to {csv_path.name}")
-        
-        print(f"\n✅ Final range: {df.index[0]} → {df.index[-1]} UTC")
-        print(f"   Latest: 1 WETH = {df['close_usd'].iloc[-1]:.2f} USD = {df['close_ratio'].iloc[-1]:.6f} cbBTC "
+
+        # Build clean DataFrame
+        df_usd = pd.DataFrame(all_usd, columns=['timestamp', 'open_usd', 'high_usd', 'low_usd', 'close_usd', 'volume_usd'])
+        df_ratio = pd.DataFrame(all_ratio, columns=['timestamp', 'open_ratio', 'high_ratio', 'low_ratio', 'close_ratio', 'volume_ratio'])
+
+        df = pd.merge(df_usd, df_ratio, on='timestamp', how='inner')
+        df['datetime'] = pd.to_datetime(df['timestamp'], unit='s')
+        df = df.set_index('datetime').sort_index()
+        df['close_cbbtc_usd'] = df['close_usd'] / df['close_ratio']
+
+        print(f"\n✅ DONE! {len(df):,} candles from {df.index[0]} → {df.index[-1]} UTC")
+        print(f" Latest: 1 WETH = {df['close_usd'].iloc[-1]:.2f} USD = {df['close_ratio'].iloc[-1]:.6f} cbBTC "
               f"(cbBTC ≈ ${df['close_cbbtc_usd'].iloc[-1]:,.0f})")
-        
+
+        if save_csv:
+            if filename is None:
+                max_part = f"max{max_years}y" if max_years is not None else "full"
+                filename = f"aerodrome_{self.pool_address}_{aggregate}min_{max_part}.csv"
+            df.to_csv(filename)
+            print(f"💾 Saved → {filename}")
+
         return df
 
 
-# ====================== RUN ======================
+# ====================== USAGE ======================
 if __name__ == "__main__":
     fetcher = AerodromeSlipstreamFetcher("0x22aee3699b6a0fed71490c103bd4e5f3309891d5")
-    df = fetcher.fetch_full_history()
     
+    df = fetcher.fetch_full_history(max_years=2.0)
+
     print("\nLast 3 rows preview:")
     print(df[['close_usd', 'close_ratio', 'close_cbbtc_usd', 'volume_usd']].tail(3))
