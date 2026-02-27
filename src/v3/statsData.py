@@ -1,7 +1,6 @@
 import ccxt
 import pandas as pd
 import pytz
-import os
 import matplotlib.pyplot as plt
 import seaborn as sns
 import matplotlib.gridspec as gridspec
@@ -49,12 +48,11 @@ class UniswapV3StatsAnalyzer:
 
         print(f"Loaded {len(self.df_24h):,} candles (Full 24h KST).")
 
-        os.makedirs('raw_data', exist_ok=True)
         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
         base = self.symbol.replace('/', '_')
-        self.full_df.to_csv(f"raw_data/{base}_{self.timeframe}_full_kst_{ts}.csv")
-        self.df_24h.to_csv(f"raw_data/{base}_{self.timeframe}_24h_kst_{ts}.csv")
-        print(f"✅ Raw data saved to raw_data/\n")
+        self.full_df.to_csv(f"{base}_{self.timeframe}_full_kst_{ts}.csv")
+        self.df_24h.to_csv(f"{base}_{self.timeframe}_24h_kst_{ts}.csv")
+        print(f"✅ Raw data saved to script folder\n")
 
     def compute_window_stats(self, sub_df: pd.DataFrame, label: str):
         print(f"=== {label} ===")
@@ -83,7 +81,6 @@ class UniswapV3StatsAnalyzer:
         if self.df_24h is None or '3h_range' not in self.df_24h.columns:
             return
 
-        os.makedirs('charts', exist_ok=True)
         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
         base = self.symbol.replace('/', '_')
         sns.set_style("darkgrid")
@@ -202,10 +199,10 @@ class UniswapV3StatsAnalyzer:
         )
         fig.subplots_adjust(top=0.895, bottom=0.06, hspace=0.38)   # tuned for extra top breathing room
 
-        plt.savefig(f"charts/{base}_combined_24h_{ts}.png", dpi=self.chart_dpi, bbox_inches='tight')
+        plt.savefig(f"{base}_combined_24h_{ts}.png", dpi=self.chart_dpi, bbox_inches='tight')
         plt.close()
 
-        print(f"✅ Dashboard with more top space + closer clock numbers saved → charts/{base}_combined_24h_{ts}.png\n")
+        print(f"✅ Dashboard with more top space + closer clock numbers saved → {base}_combined_24h_{ts}.png\n")
 
     def print_range_recommendations(self):
         print("\n" + "="*90)
@@ -252,13 +249,12 @@ class UniswapV3StatsAnalyzer:
                 balanced, safe, agg, med, p75v, p90v, samples = res
                 recs_list.append([name, med, p75v, p90v, balanced, safe, agg, samples])
 
-        os.makedirs('charts', exist_ok=True)
         df_recs = pd.DataFrame(recs_list, columns=[
             'Bucket', 'Median', 'P75', 'P90', 'Balanced', 'Safe', 'Aggressive', 'Samples'
         ])
-        csv_path = f"charts/{base}_hourly_recommendations_{ts}.csv"
+        csv_path = f"{base}_hourly_recommendations_{ts}.csv"
         df_recs.to_csv(csv_path, index=False)
-        print(f"\n✅ Hourly recommendations CSV saved → {csv_path}\n")
+        print(f"\n✅ Hourly recommendations CSV saved → {csv_path}")
 
         print("\n✅ Done! Run weekly for fresh numbers & charts.")
 
