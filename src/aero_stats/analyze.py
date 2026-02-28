@@ -12,7 +12,7 @@ plt.rcParams['font.size'] = 13
 
 # ====================== CONFIG ======================
 CSV_FILE = 'aerodrome_0x22aee3699b6a0fed71490c103bd4e5f3309891d5_15min_max2.0y.csv'
-ASSET = 'Aerodrome Token (USD)'
+ASSET = 'WETH-cbBTC Pool (USD)'
 
 df = pd.read_csv(CSV_FILE)
 df['datetime_utc'] = pd.to_datetime(df['datetime'])
@@ -47,7 +47,7 @@ hourly_trend = df.groupby('hour_kst')['rolling_range_pct'].agg(
     median='median', p75=lambda x: x.quantile(0.75), p90=lambda x: x.quantile(0.90)
 ).reindex(range(24))
 
-# ====================== HOURLY RECOMMENDATIONS (FIXED - perfect Samples column) ======================
+# ====================== HOURLY RECOMMENDATIONS ======================
 print("\n📊 Generating hourly recommendations...")
 
 df['hour_start'] = df.index.floor('h')
@@ -74,10 +74,8 @@ stats_hourly['Balanced']   = (stats_hourly['Median'] * 1.60).round(1)
 stats_hourly['Safe']       = (stats_hourly['Median'] * 1.80).round(1)
 stats_hourly['Aggressive'] = (stats_hourly['Median'] * 1.30).round(1)
 
-# Rename count → Samples BEFORE concat
 stats_hourly = stats_hourly.rename(columns={'count': 'Samples'})
 
-# Overall row
 overall_median = hourly['range_pct'].median().round(3)
 overall_p75 = hourly['range_pct'].quantile(0.75).round(3)
 overall_p90 = hourly['range_pct'].quantile(0.90).round(3)
@@ -100,15 +98,17 @@ final_df = pd.concat([
 
 final_df = final_df[['Bucket', 'Median', 'P75', 'P90', 'Balanced', 'Safe', 'Aggressive', 'Samples']]
 
-final_df.to_csv('aerodrome_hourly_recommendations.csv', index=False)
+final_df.to_csv('weth_cbbtc_hourly_recommendations.csv', index=False)
 
-print("✅ Hourly CSV saved → aerodrome_hourly_recommendations.csv")
+print("✅ Hourly CSV saved → weth_cbbtc_hourly_recommendations.csv")
 print(final_df.to_string(index=False))
 
 # ====================== BIG DASHBOARD PNG ======================
 print("\n🎨 Generating full dashboard PNG...")
+
 fig, axes = plt.subplots(2, 3, figsize=(22, 15))
 
+# [ALL YOUR PLOTTING CODE BELOW STAYS 100% UNCHANGED]
 cutoff = df.index.max() - pd.Timedelta(days=90)
 recent_grouped = df[df.index >= cutoff].groupby(['date', 'bucket_start']).agg({
     'high_usd': 'max', 'low_usd': 'min'
@@ -164,12 +164,18 @@ ax.set_xticklabels([f'{h:02d}' for h in range(24)])
 ax.set_title('24h Volatility Clock (KST)')
 
 plt.tight_layout()
-plt.savefig('aerodrome_3h_analysis_full.png', dpi=300, bbox_inches='tight')
-print("✅ Big dashboard saved → aerodrome_3h_analysis_full.png")
+
+# ==================== OPTIMIZED SAVE ====================
+plt.savefig('weth_cbbtc_3h_analysis_full.png', 
+            dpi=180,
+            bbox_inches='tight',
+            pil_kwargs={'optimize': True, 'compress_level': 9})
+
+print("✅ Big dashboard saved → weth_cbbtc_3h_analysis_full.png (~500 KB target)")
 
 # ====================== REPORT ======================
-with open('aerodrome_volatility_report.txt', 'w') as f:
-    f.write("Aerodrome Token Volatility Report (KST)\n")
+with open('weth_cbbtc_volatility_report.txt', 'w') as f:
+    f.write("WETH-cbBTC Pool Volatility Report (KST)\n")
     f.write("="*60 + "\n\n")
     f.write(f"Period: {df.index[0].date()} → {df.index[-1].date()}\n\n")
     f.write(f"Most volatile 3h bucket: {bucket_stats.loc[bucket_stats['median'].idxmax(), 'time_bucket']} "

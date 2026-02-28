@@ -1,4 +1,4 @@
-Aerodrome Token Volatility Report (KST)
+WETH-cbBTC Pool Volatility Report (KST)
 ============================================================
 
 Period: 2025-09-02 → 2026-02-28
