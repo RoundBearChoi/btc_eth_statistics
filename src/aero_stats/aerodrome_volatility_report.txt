@@ -1,8 +1,10 @@
 Aerodrome Token Volatility Report (KST)
-==================================================
+============================================================
 
 Period: 2025-09-02 → 2026-02-28
-Most volatile 3h bucket: 00-03 (1.79% median)
-Calmest 3h bucket: 18-21 (0.97% median)
 
-Last 90 days top bucket: 00-03 (1.90%)
+Most volatile 3h bucket: 00-03 (1.79%)
+Calmest 3h bucket: 18-21 (0.97%)
+
+Hottest hour (1h): 23:00 – 00:00
+Calmest hour (1h): 19:00 – 20:00
