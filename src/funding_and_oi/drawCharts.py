@@ -4,20 +4,22 @@ import matplotlib.pyplot as plt
 from datetime import datetime, timedelta
 import yfinance as yf
 import time
+import sys
 
 
 class BTCLeverageChart:
-    def __init__(self, days_back: int = 45, figsize: tuple = (13, 7.5), dpi: int = 200):
-        self.days_back = days_back
+    def __init__(self, months: int = 1.5, figsize: tuple = (13, 7.5), dpi: int = 200):
+        self.months = months
+        self.days_back = int(months * 30.4375)   # accurate average month length
         self.figsize = figsize
         self.dpi = dpi
         self.symbol = 'BTCUSDT'
 
     def fetch_binance_funding(self):
-        print("Fetching Funding (Binance full history)...")
+        print(f"Fetching Funding (Binance, last {self.months:.1f} months)...")
         url = 'https://fapi.binance.com/fapi/v1/fundingRate'
         all_data = []
-        start_ts = int((datetime.now() - timedelta(days=self.days_back + 10)).timestamp() * 1000)
+        start_ts = int((datetime.now() - timedelta(days=self.days_back + 15)).timestamp() * 1000)
         headers = {'User-Agent': 'Mozilla/5.0'}
         while True:
             params = {'symbol': self.symbol, 'startTime': start_ts, 'limit': 1000}
@@ -38,13 +40,13 @@ class BTCLeverageChart:
         return df
 
     def fetch_binance_oi(self):
-        print("Fetching Open Interest (Binance recent)...")
+        print(f"Fetching Open Interest (Binance, last {self.months:.1f} months)...")
         url = 'https://fapi.binance.com/futures/data/openInterestHist'
         all_data = []
         headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
         end_ts = int(datetime.now().timestamp() * 1000)
         limit = 500
-        for _ in range(8):
+        for _ in range(12):   # generous safety for up to ~12 months
             params = {'symbol': self.symbol, 'period': '1d', 'limit': limit, 'endTime': end_ts}
             resp = requests.get(url, params=params, headers=headers)
             if resp.status_code != 200:
@@ -63,7 +65,8 @@ class BTCLeverageChart:
 
     def fetch_btc_price(self):
         print("Fetching BTC Price...")
-        data = yf.download('BTC-USD', start='2025-01-01', progress=False)
+        start_date = (datetime.now() - timedelta(days=self.days_back + 30)).strftime('%Y-%m-%d')
+        data = yf.download('BTC-USD', start=start_date, progress=False)
         btc = data[['Close']].copy()
         if isinstance(btc.columns, pd.MultiIndex):
             btc.columns = btc.columns.get_level_values(0)
@@ -72,18 +75,15 @@ class BTCLeverageChart:
         return btc
 
     def process_data(self, funding_df, oi_df, btc):
-        # Daily aggregates
         funding_daily = funding_df.resample('D', on='fundingTime')['fundingRate'].mean().reset_index()
         funding_daily['Date'] = funding_daily['fundingTime'].dt.date
 
         oi_daily = oi_df.resample('D', on='timestamp')['oi_usd_billions'].mean().reset_index()
         oi_daily['Date'] = oi_daily['timestamp'].dt.date
 
-        # Merge
         merged = pd.merge(btc, funding_daily[['Date', 'fundingRate']], on='Date', how='left')
         merged = pd.merge(merged, oi_daily[['Date', 'oi_usd_billions']], on='Date', how='left')
 
-        # Cut to requested period
         cutoff = (datetime.now() - timedelta(days=self.days_back)).date()
         merged = merged[merged['Date'] >= cutoff].copy().reset_index(drop=True)
         merged['fundingRate_ma7'] = merged['fundingRate'].rolling(7, min_periods=1).mean()
@@ -110,14 +110,14 @@ class BTCLeverageChart:
         ax2.set_ylabel('Funding Rate (%)', color='#d62728', fontsize=12)
         ax2.tick_params(axis='y', labelcolor='#d62728')
 
-        plt.title(f'BTC/USD — Price + Funding + Open Interest (Binance Only)\nLast {self.days_back} Days — Fully Automatic',
+        plt.title(f'BTC/USD — Price + Funding + Open Interest (Binance Only)\nLast {self.months:.1f} Months — Fully Automatic',
                   fontsize=15, pad=15)
         fig.legend(loc="upper left", bbox_to_anchor=(0.12, 0.88), fontsize=10, ncol=3)
         plt.grid(True, alpha=0.35)
         plt.xticks(rotation=45)
         plt.tight_layout()
 
-        filename = f'btc_binance_price_funding_oi_{self.days_back}d_small.png'
+        filename = f'btc_binance_price_funding_oi_{self.months:.0f}m_small.png'
         plt.savefig(filename, dpi=self.dpi, bbox_inches='tight')
         plt.show()
         print(f"\n✅ Chart saved → {filename}")
@@ -138,5 +138,14 @@ class BTCLeverageChart:
 
 
 if __name__ == "__main__":
-    chart = BTCLeverageChart(days_back=45)   # ← change here if you want more days
+    # CLI support: python drawCharts.py 12
+    months = 1.5   # default ≈45 days
+    if len(sys.argv) > 1:
+        try:
+            months = float(sys.argv[1])
+        except ValueError:
+            print("Usage: python drawCharts.py [months]   e.g. python drawCharts.py 12")
+            months = 1.5
+
+    chart = BTCLeverageChart(months=months)
     chart.run()
