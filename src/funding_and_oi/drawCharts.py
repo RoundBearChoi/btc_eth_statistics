@@ -120,7 +120,7 @@ class BTCLeverageChart:
         ax2.set_ylabel('Funding Rate (%)', color='#d62728', fontsize=12)
         ax2.tick_params(axis='y', labelcolor='#d62728')
 
-        plt.title(f'BTC/USD — Price + Funding + Open Interest (Binance)\nLast {self.days_back} Days @ {self.interval} — Fully Automatic',
+        plt.title(f'BTC/USD — Price + Funding + Open Interest (Binance)\nLast {self.days_back} Days @ {self.interval}',
                   fontsize=15, pad=15)
         fig.legend(loc="upper left", bbox_to_anchor=(0.12, 0.88), fontsize=10, ncol=3)
         plt.grid(True, alpha=0.35)
