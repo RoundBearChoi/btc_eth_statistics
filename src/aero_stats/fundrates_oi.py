@@ -1,92 +1,87 @@
+import ccxt
 import pandas as pd
-from pathlib import Path
+from datetime import datetime, timedelta, timezone
+import time
 
-print("📁 Files found:")
-for f in sorted(Path('.').glob('*.*')):
-    if f.suffix.lower() in ['.csv', '.parquet']:
-        print(f"   • {f.name}")
-
-# ================== CONFIG ==================
-spot_file = 'aerodrome_0x22aee3699b6a0fed71490c103bd4e5f3309891d5_15min_max2.0y.csv'
-funding_file = 'ETHBTC_funding_2y.csv'           # full 2y ETH/BTC funding
-oi_file = 'ETHBTCUSDT_oi_15m_2y.csv'             # your Bybit 15m OI file
-funding_btc_file = 'BTCUSDT_funding_2y.csv'
-funding_eth_file = 'ETHUSDT_funding_2y.csv'
+# ================== CONFIG (aligned to your 6-month spot) ==================
+EXCHANGE = 'binance'                    # better OI history than Bybit
+MAIN_SYMBOL = 'ETHBTC'                  # perfect match for WETH-cbBTC
+TIMEFRAME_OI = '1h'                     # 1h gives longer history than 15m
+DAYS_BACK = 250                         # ~8 months (covers your spot + buffer)
 # ===========================================
 
-print(f"\n🔄 Loading spot data: {spot_file}")
+print(f"🚀 Pulling 8-month data (matches your spot period) on {EXCHANGE.upper()}...")
 
-spot = pd.read_csv(spot_file)
+exchange = ccxt.binance({
+    'options': {'defaultType': 'future'},
+    'enableRateLimit': True,
+})
+exchange.load_markets()
 
-# Normalize spot datetime
-time_cols = ['datetime', 'timestamp', 'time', 'ts', 'date', 'block_time']
-datetime_col = next((col for col in time_cols if col.lower() in [c.lower() for c in spot.columns]), None)
-if not datetime_col:
-    raise ValueError(f"Could not find time column. Columns: {list(spot.columns)}")
+def save_df(df, filename_base, suffix):
+    file = f"{filename_base}{suffix}.parquet"
+    try:
+        df.to_parquet(file, index=False)
+        print(f"✅ Saved {len(df):,} rows → {file}")
+    except Exception:
+        file_csv = file.replace('.parquet', '.csv')
+        df.to_csv(file_csv, index=False)
+        print(f"→ Saved as CSV: {file_csv} (run 'pip install pyarrow' for parquet)")
 
-spot['datetime'] = pd.to_datetime(spot[datetime_col], utc=True)
-if datetime_col != 'datetime':
-    spot = spot.drop(columns=[datetime_col])
-spot = spot.sort_values('datetime').reset_index(drop=True)
+def fetch_funding_rates(symbol: str):
+    print(f"\n📈 Funding rates → {symbol}")
+    since = int((datetime.now(timezone.utc) - timedelta(days=DAYS_BACK)).timestamp() * 1000)
+    all_data = []
+    while True:
+        try:
+            rates = exchange.fetch_funding_rate_history(symbol, since=since, limit=1000)
+            if not rates: break
+            all_data.extend(rates)
+            print(f"   → Got {len(rates)} records (total: {len(all_data):,})")
+            since = rates[-1]['timestamp'] + 1
+            if len(rates) < 900: break
+            time.sleep(0.3)
+        except Exception as e:
+            print(f"   ⚠️ {e}")
+            break
+    if all_data:
+        df = pd.DataFrame(all_data)
+        df['datetime'] = pd.to_datetime(df['timestamp'], unit='ms', utc=True)
+        df = df.sort_values('timestamp').reset_index(drop=True)
+        save_df(df, symbol.replace('/', '_'), '_funding_8m')
+        print(f"   Range: {df['datetime'].min()} → {df['datetime'].max()}\n")
 
-print(f"✅ Spot loaded: {len(spot):,} rows | {spot['datetime'].min()} → {spot['datetime'].max()}")
+def fetch_open_interest(symbol: str, timeframe: str):
+    print(f"📊 {timeframe} Open Interest → {symbol}")
+    since = int((datetime.now(timezone.utc) - timedelta(days=DAYS_BACK)).timestamp() * 1000)
+    all_data = []
+    while True:
+        try:
+            oi = exchange.fetch_open_interest_history(symbol, timeframe=timeframe, since=since, limit=500)
+            if not oi: break
+            all_data.extend(oi)
+            print(f"   → Got {len(oi)} records (total: {len(all_data):,})")
+            since = oi[-1]['timestamp'] + 1
+            if len(oi) < 400: break
+            time.sleep(0.25)
+        except Exception as e:
+            print(f"   → {e} (max history reached)")
+            break
+    if all_data:
+        df = pd.DataFrame(all_data)
+        df['datetime'] = pd.to_datetime(df['timestamp'], unit='ms', utc=True)
+        df = df.sort_values('timestamp').reset_index(drop=True)
+        save_df(df, symbol.replace('/', '_'), f'_oi_{timeframe}_8m')
+        print(f"   Range: {df['datetime'].min()} → {df['datetime'].max()}\n")
 
-# Load funding
-funding = pd.read_csv(funding_file)
-funding['datetime'] = pd.to_datetime(funding['timestamp'], unit='ms', utc=True)
+# ===================== RUN =====================
+symbols = ['ETHBTC', 'BTCUSDT', 'ETHUSDT']
+for sym in symbols:
+    print("=" * 70)
+    print(f"Processing {sym}")
+    print("=" * 70)
+    fetch_funding_rates(sym)
+    fetch_open_interest(sym, TIMEFRAME_OI)
 
-# Load OI
-oi = pd.read_csv(oi_file)
-oi['datetime'] = pd.to_datetime(oi['timestamp'], unit='ms', utc=True)
-
-print(f"\n🔍 OI columns: {list(oi.columns)}")   # ← This will tell us the exact names
-
-# Load synthetic funding
-funding_btc = pd.read_csv(funding_btc_file)
-funding_eth = pd.read_csv(funding_eth_file)
-funding_btc['datetime'] = pd.to_datetime(funding_btc['timestamp'], unit='ms', utc=True)
-funding_eth['datetime'] = pd.to_datetime(funding_eth['timestamp'], unit='ms', utc=True)
-
-# Normalize precision
-for df_temp in [spot, funding, oi, funding_btc, funding_eth]:
-    df_temp['datetime'] = df_temp['datetime'].astype('datetime64[ms, UTC]')
-
-# Auto-detect OI columns (works for Binance AND Bybit)
-open_col = next((col for col in oi.columns if 'open' in col.lower() and 'interest' in col.lower() and 'value' not in col.lower()), None)
-value_col = next((col for col in oi.columns if any(x in col.lower() for x in ['value', 'usd', 'notional'])), None)
-
-if not open_col or not value_col:
-    raise ValueError(f"Could not detect OI columns. Available: {list(oi.columns)}")
-
-print(f"✅ Using OI columns → contracts: '{open_col}' | USD: '{value_col}'")
-
-# ================== MERGE ==================
-df = pd.merge_asof(
-    spot,
-    funding[['datetime', 'fundingRate']].rename(columns={'fundingRate': 'funding_rate_ethbtc'}),
-    on='datetime', direction='backward'
-)
-
-df = pd.merge_asof(
-    df,
-    oi[['datetime', open_col, value_col]].rename(columns={open_col: 'oi_contracts', value_col: 'oi_usd'}),
-    on='datetime', direction='backward'
-)
-
-# Synthetic funding
-df = pd.merge_asof(df, funding_eth[['datetime', 'fundingRate']].rename(columns={'fundingRate': 'funding_rate_eth'}), on='datetime', direction='backward')
-df = pd.merge_asof(df, funding_btc[['datetime', 'fundingRate']].rename(columns={'fundingRate': 'funding_rate_btc'}), on='datetime', direction='backward')
-df['funding_rate_synthetic'] = df['funding_rate_eth'] - df['funding_rate_btc']
-
-# Forward-fill funding
-for col in ['funding_rate_ethbtc', 'funding_rate_eth', 'funding_rate_btc', 'funding_rate_synthetic']:
-    df[col] = df[col].ffill()
-
-print(f"\n🎉 MERGE COMPLETE! Final dataset: {len(df):,} rows")
-print(df[['datetime', 'funding_rate_ethbtc', 'funding_rate_synthetic', 'oi_usd']].tail(8))
-
-# Save
-output_file = 'weth_cbbtc_15m_with_funding_oi.parquet'
-df.to_parquet(output_file, index=False)
-print(f"💾 Saved → {output_file}")
-print("\n✅ You now have perfectly aligned 15min spot + funding + OI data!")
+print("\n🎉 DONE! New files created with _8m suffix.")
+print("Now run the merge again — it will be perfectly aligned.")
