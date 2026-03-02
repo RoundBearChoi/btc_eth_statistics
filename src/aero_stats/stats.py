@@ -13,7 +13,6 @@ class AerodromeSlipstreamFetcher:
       • Automatic incremental updates (only fetches new candles since your last CSV entry)
       • Full history on first run (capped at max_years)
       • Perfect compatibility with your existing CSV (timezone-aware fix included)
-      • Logs in both UTC and KST (perfect for Korea)
       • Safe, rate-limit friendly, no duplicates
     """
 
