@@ -3,9 +3,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy import stats
 import seaborn as sns
+import sys
 
 class BTCETHFundingAnalyzer:
-    def __init__(self, csv_path='btc_eth_funding_spread_2y.csv'):
+    def __init__(self, csv_path='btc_eth_funding_spread_2y.csv', ratio_quantile=0.90):
         print("🔄 Loading BTC-ETH funding spread data...")
         self.df = pd.read_csv(csv_path, parse_dates=['open_time'])
         self.df.set_index('open_time', inplace=True)
@@ -15,6 +16,11 @@ class BTCETHFundingAnalyzer:
 
         # Dynamic large-spread threshold (top 5% of all historical |spreads|)
         self.large_spread_threshold = self.df['funding_spread'].abs().quantile(0.95)
+
+        # User-configurable ratio quantile (default 0.90 = top 10%)
+        self.ratio_quantile = ratio_quantile
+        print(f"📊 Using top {int(self.ratio_quantile * 100)}% for large BTC/ETH ratio moves "
+              f"(quantile = {self.ratio_quantile})")
 
     def _basic_stats(self):
         print("=== BASIC STATS ===")
@@ -31,7 +37,7 @@ class BTCETHFundingAnalyzer:
 
     def _main_png(self):
         fig_main = plt.figure(figsize=(16, 22), constrained_layout=True)
-        # ... (all the same plotting code as before - unchanged)
+
         ax1 = fig_main.add_subplot(4, 1, 1)
         ax1.plot(self.df.index, self.df['btc_close'], label='BTC Close', color='orange', lw=1.5)
         ax1_twin = ax1.twinx()
@@ -124,10 +130,10 @@ class BTCETHFundingAnalyzer:
         plt.close()
 
     def _large_ratio_moves(self):
-        large_ratio_threshold = self.df['ratio_24h_change'].abs().quantile(0.90)
+        large_ratio_threshold = self.df['ratio_24h_change'].abs().quantile(self.ratio_quantile)
         self.df['large_ratio_move'] = self.df['ratio_24h_change'].abs() > large_ratio_threshold
 
-        print(f"\n=== PREDICTING LARGE BTC/ETH RATIO MOVES (top 10% magnitude) ===")
+        print(f"\n=== PREDICTING LARGE BTC/ETH RATIO MOVES (top {int(self.ratio_quantile * 100)}% magnitude) ===")
         print(f"Large move threshold (|24h ratio change|): {large_ratio_threshold:.4f}")
 
         baseline = self.df['large_ratio_move'].mean()
@@ -243,5 +249,19 @@ class BTCETHFundingAnalyzer:
 
 # ====================== RUN THE ANALYSIS ======================
 if __name__ == "__main__":
-    analyzer = BTCETHFundingAnalyzer()
+    # Default = top 10% (quantile 0.90)
+    ratio_quantile = 0.90
+
+    if len(sys.argv) > 1:
+        try:
+            q = int(sys.argv[1])
+            if 1 <= q <= 99:
+                ratio_quantile = q / 100.0
+            else:
+                print(f"⚠️  Quantile {q} out of valid range (1-99). Using default 90.")
+        except ValueError:
+            print("⚠️  Invalid argument. Usage: python analyzeData.py [80|90|95|99]")
+            print("   Using default 90.")
+
+    analyzer = BTCETHFundingAnalyzer(ratio_quantile=ratio_quantile)
     analyzer.run()
