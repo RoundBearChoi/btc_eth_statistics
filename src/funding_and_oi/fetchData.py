@@ -105,6 +105,8 @@ def create_btc_eth_combined(btc_merged: pd.DataFrame, eth_merged: pd.DataFrame):
                 )
     
     combined['btc_eth_ratio'] = combined['btc_close'] / combined['eth_close']
+    combined['eth_btc_ratio'] = combined['eth_close'] / combined['btc_close']   # ← ADDED
+    
     combined['funding_spread'] = combined['btc_funding'] - combined['eth_funding']
     
     # === CLEAN START: drop any rows before BOTH funding rates exist ===
@@ -145,4 +147,4 @@ if __name__ == "__main__":
     print(f"\n📅 Actual clean data range:")
     print(f"   From: {combined.index[0]}")
     print(f"   To:   {combined.index[-1]}")
-    print(f"\nFiles are ready in your current folder. Pure raw data with funding from day 1! 🎯")
+    print(f"\nFiles are ready in your current folder. Now includes both btc_eth_ratio and eth_btc_ratio! 🎯")
