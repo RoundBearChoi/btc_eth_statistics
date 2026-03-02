@@ -88,17 +88,14 @@ fig_extra.suptitle(f'BTC-ETH Funding Extra Charts\n{df.index[0].date()} — {df.
 
 plt.savefig('btc_eth_funding_extra.png', dpi=200, bbox_inches='tight', facecolor='white')
 
-# ====================== 24H RATIO CHANGE (for all predictions) ======================
+# ====================== 24H RATIO CHANGE ======================
 df['ratio_24h_change'] = df['btc_eth_ratio'].shift(-96) - df['btc_eth_ratio']
 
 # ====================== HIGHLIGHTED LARGE SPREAD CHART ======================
 plt.figure(figsize=(12, 8))
-
-# Background: all points faint
 plt.scatter(df['funding_spread'], df['ratio_24h_change'],
             c='lightgray', s=3, alpha=0.4, label='All data (small spread)')
 
-# Foreground: only large spreads highlighted
 large_mask = abs_spread > 0.00015
 sc3 = plt.scatter(df.loc[large_mask, 'funding_spread'], 
                   df.loc[large_mask, 'ratio_24h_change'],
@@ -115,7 +112,7 @@ plt.legend()
 plt.savefig('btc_eth_spread_vs_future_ratio.png', dpi=180, bbox_inches='tight')
 plt.close()
 
-# ====================== NEW: PREDICT LARGE MAGNITUDE RATIO CHANGES ======================
+# ====================== PREDICT LARGE RATIO MOVES ======================
 large_ratio_threshold = df['ratio_24h_change'].abs().quantile(0.90)
 df['large_ratio_move'] = df['ratio_24h_change'].abs() > large_ratio_threshold
 
@@ -129,7 +126,6 @@ print(f"Baseline probability of large move: {baseline:.1%}")
 print(f"When |spread| > 0.00015 → probability of large move: {when_large_spread:.1%}")
 print(f"Lift: {when_large_spread / baseline:.2f}x more likely")
 
-# New chart: Large ratio moves highlighted on the spread-vs-change plot
 plt.figure(figsize=(12, 8))
 plt.scatter(df['funding_spread'], df['ratio_24h_change'],
             c='lightgray', s=3, alpha=0.4)
@@ -149,16 +145,72 @@ plt.legend()
 plt.savefig('btc_eth_large_ratio_moves.png', dpi=180, bbox_inches='tight')
 plt.close()
 
-# Top 10 largest funding spreads again (for quick reference)
 df['funding_spread_abs'] = abs_spread
 big_div = df.nlargest(10, 'funding_spread_abs')
 print("\nTop 10 largest funding spreads and 24h BTC/ETH ratio change afterward:")
 print(big_div[['funding_spread', 'ratio_24h_change']].round(6))
+
+# ====================== SIMPLE SINGLE-LINE 14D FUNDING SPREAD CHART (NO FILL, TIGHT Y) ======================
+print("\nGenerating Simple 14D Funding Spread Chart (single line, tight Y)...")
+
+end_time = df.index.max()
+start_time = end_time - pd.Timedelta(days=14)
+recent_df = df[(df.index >= start_time) & (df.index <= end_time)].copy()
+
+if len(recent_df) < 20:
+    print("   Warning: Less than 14d of data — using last 1400 points as fallback")
+    recent_df = df.tail(1400)
+
+fig, ax = plt.subplots(figsize=(15, 8.5))
+
+spread_scaled = recent_df['funding_spread'] * 1_000_000
+
+# Clean single purple line only
+ax.plot(recent_df.index, spread_scaled, 
+        color='purple', lw=3.5, marker='o', markersize=3.5, 
+        label='BTC-ETH Funding Spread (Delta)')
+
+ax.axhline(0, color='black', ls='--', lw=1.5)
+
+# Tight Y-zoom focused only on the actual spread values
+data_min = spread_scaled.min()
+data_max = spread_scaled.max()
+data_range = data_max - data_min
+if data_range < 0.1:
+    data_range = 1.0
+padding = 0.25 * data_range
+ax.set_ylim(data_min - padding, data_max + padding)
+
+# Big current-value annotation
+current_spread = recent_df['funding_spread'].iloc[-1]
+current_scaled = current_spread * 1_000_000
+
+ax.annotate(f'CURRENT SPREAD\n{current_spread:+.8f}\n({current_scaled:+.2f} ×10⁻⁶)', 
+            xy=(recent_df.index[-1], current_scaled),
+            xytext=(35, 45 if current_spread >= 0 else -70),
+            textcoords='offset points',
+            fontsize=15, fontweight='bold', ha='left',
+            bbox=dict(boxstyle="round,pad=0.8", facecolor='yellow', alpha=0.95))
+
+ax.set_title('BTC - ETH Funding Rate Difference (Last 14 Days)', fontsize=18, fontweight='bold', pad=20)
+ax.set_ylabel('Spread × 1,000,000', fontsize=14)
+ax.set_xlabel('Time (UTC)')
+ax.legend(fontsize=12, loc='upper right')
+ax.grid(True, alpha=0.35)
+
+fig.suptitle(f'Latest data: {df.index[-1].strftime("%Y-%m-%d %H:%M UTC")}', fontsize=13, y=0.97)
+
+plt.xticks(rotation=45)
+plt.tight_layout()
+plt.savefig('btc_eth_funding_14d_delta.png', dpi=260, bbox_inches='tight', facecolor='white')
+plt.close()
+
+print(f"   • btc_eth_funding_14d_delta.png  (Clean single-line 14D spread | Current: {current_spread:+.8f})")
 
 # ====================== FINAL MESSAGE ======================
 print("\n✅ ALL DONE! Files saved:")
 print("   • btc_eth_funding_main.png")
 print("   • btc_eth_funding_extra.png")
 print("   • btc_eth_spread_vs_future_ratio.png")
-print("   • btc_eth_large_ratio_moves.png   ← NEW: large magnitude moves highlighted in red")
-print("   → Script finished silently.")
+print("   • btc_eth_large_ratio_moves.png")
+print("   • btc_eth_funding_14d_delta.png")
