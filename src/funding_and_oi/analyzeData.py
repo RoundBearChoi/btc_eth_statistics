@@ -150,16 +150,21 @@ big_div = df.nlargest(10, 'funding_spread_abs')
 print("\nTop 10 largest funding spreads and 24h BTC/ETH ratio change afterward:")
 print(big_div[['funding_spread', 'ratio_24h_change']].round(6))
 
-# ====================== SIMPLE SINGLE-LINE 14D FUNDING SPREAD CHART (NO FILL, TIGHT Y) ======================
-print("\nGenerating Simple 14D Funding Spread Chart (single line, tight Y)...")
+# ====================== SIMPLE SINGLE-LINE 14D FUNDING SPREAD CHART (KST) ======================
+print("\nGenerating Simple 14D Funding Spread Chart (single line, tight Y, KST)...")
 
 end_time = df.index.max()
 start_time = end_time - pd.Timedelta(days=14)
 recent_df = df[(df.index >= start_time) & (df.index <= end_time)].copy()
 
+# Convert to KST (UTC+9, no DST)
+recent_df = recent_df.copy()
+recent_df.index = recent_df.index.tz_localize('UTC').tz_convert('Asia/Seoul')
+
 if len(recent_df) < 20:
     print("   Warning: Less than 14d of data — using last 1400 points as fallback")
-    recent_df = df.tail(1400)
+    recent_df = df.tail(1400).copy()
+    recent_df.index = recent_df.index.tz_localize('UTC').tz_convert('Asia/Seoul')
 
 fig, ax = plt.subplots(figsize=(15, 8.5))
 
@@ -194,18 +199,20 @@ ax.annotate(f'CURRENT SPREAD\n{current_spread:+.8f}\n({current_scaled:+.2f} ×10
 
 ax.set_title('BTC - ETH Funding Rate Difference (Last 14 Days)', fontsize=18, fontweight='bold', pad=20)
 ax.set_ylabel('Spread × 1,000,000', fontsize=14)
-ax.set_xlabel('Time (UTC)')
+ax.set_xlabel('Time (KST)')                    # ← now KST
 ax.legend(fontsize=12, loc='upper right')
 ax.grid(True, alpha=0.35)
 
-fig.suptitle(f'Latest data: {df.index[-1].strftime("%Y-%m-%d %H:%M UTC")}', fontsize=13, y=0.97)
+# Updated suptitle with KST time
+fig.suptitle(f'Latest data: {recent_df.index[-1].strftime("%Y-%m-%d %H:%M KST")}', 
+             fontsize=13, y=0.97)
 
 plt.xticks(rotation=45)
 plt.tight_layout()
 plt.savefig('btc_eth_funding_14d_delta.png', dpi=260, bbox_inches='tight', facecolor='white')
 plt.close()
 
-print(f"   • btc_eth_funding_14d_delta.png  (Clean single-line 14D spread | Current: {current_spread:+.8f})")
+print(f"   • btc_eth_funding_14d_delta.png  (KST version | Current: {current_spread:+.8f})")
 
 # ====================== FINAL MESSAGE ======================
 print("\n✅ ALL DONE! Files saved:")
