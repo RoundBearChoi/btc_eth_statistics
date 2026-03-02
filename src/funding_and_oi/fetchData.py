@@ -26,7 +26,7 @@ def fetch_funding_rates(symbol: str, start_time=None, end_time=None, limit: int 
 
 def get_full_funding_history(symbol: str, years: int = 2):
     end = datetime.now(timezone.utc)
-    start = end - timedelta(days=int(365.25 * years))
+    start = end - timedelta(days=int(365.25 * years) + 3)  # +3 days buffer to catch first funding
     all_dfs = []
     current_start = start
     
@@ -70,7 +70,7 @@ def fetch_klines(symbol: str, interval: str = '15m', start_time=None, end_time=N
 
 def get_full_klines(symbol: str, interval: str = '15m', years: int = 2):
     end = datetime.now(timezone.utc)
-    start = end - timedelta(days=int(365.25 * years))
+    start = end - timedelta(days=int(365.25 * years) + 3)  # +3 days buffer
     all_dfs = []
     current_start = start
     
@@ -107,9 +107,8 @@ def create_btc_eth_combined(btc_merged: pd.DataFrame, eth_merged: pd.DataFrame):
     combined['btc_eth_ratio'] = combined['btc_close'] / combined['eth_close']
     combined['funding_spread'] = combined['btc_funding'] - combined['eth_funding']
     
-    # Future returns (for your analysis)
-    combined['ratio_return_8h'] = combined['btc_eth_ratio'].pct_change(periods=32).shift(-32)
-    combined['ratio_return_24h'] = combined['btc_eth_ratio'].pct_change(periods=96).shift(-96)
+    # === CLEAN START: drop any rows before BOTH funding rates exist ===
+    combined = combined.dropna(subset=['btc_funding', 'eth_funding']).copy()
     
     return combined
 
@@ -118,11 +117,11 @@ if __name__ == "__main__":
     INTERVAL = '15m'
     YEARS = 2
     
-    print("Fetching 2 years of BTC data... ⌛ pls wait")
+    print("Fetching ~2 years of BTC data... ⌛ pls wait")
     btc_price = get_full_klines('BTCUSDT', INTERVAL, YEARS)
     btc_fund  = get_full_funding_history('BTCUSDT', YEARS)
     
-    print("Fetching 2 years of ETH data... ⌛ pls wait")
+    print("Fetching ~2 years of ETH data... ⌛ pls wait")
     eth_price = get_full_klines('ETHUSDT', INTERVAL, YEARS)
     eth_fund  = get_full_funding_history('ETHUSDT', YEARS)
     
@@ -139,7 +138,11 @@ if __name__ == "__main__":
     combined.to_csv("btc_eth_funding_spread_2y.csv")
     
     print(f"\n✅ All raw data saved!")
-    print(f"   • BTC full (price + funding):  btc_merged_2y.csv          ({len(btc_merged):,} rows)")
-    print(f"   • ETH full (price + funding):  eth_merged_2y.csv          ({len(eth_merged):,} rows)")
-    print(f"   • BTC/ETH combined:            btc_eth_funding_spread_2y.csv ({len(combined):,} rows)")
-    print(f"\nFiles are ready in your current folder. No charts, just clean data! 🎯")
+    print(f"   • BTC full:   btc_merged_2y.csv          ({len(btc_merged):,} rows)")
+    print(f"   • ETH full:   eth_merged_2y.csv          ({len(eth_merged):,} rows)")
+    print(f"   • Combined:   btc_eth_funding_spread_2y.csv ({len(combined):,} rows)")
+    
+    print(f"\n📅 Actual clean data range:")
+    print(f"   From: {combined.index[0]}")
+    print(f"   To:   {combined.index[-1]}")
+    print(f"\nFiles are ready in your current folder. Pure raw data with funding from day 1! 🎯")
