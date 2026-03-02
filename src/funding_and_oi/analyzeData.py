@@ -4,12 +4,12 @@ import numpy as np
 from scipy import stats
 import seaborn as sns
 
-# Load data
+# ====================== LOAD DATA ======================
 df = pd.read_csv('btc_eth_funding_spread_2y.csv', parse_dates=['open_time'])
 df.set_index('open_time', inplace=True)
 df.sort_index(inplace=True)
 
-# Stats (still printed so you see the summary)
+# ====================== BASIC STATS ======================
 print("=== BASIC STATS ===")
 print(df[['btc_close', 'eth_close', 'btc_funding', 'eth_funding', 'funding_spread']].describe())
 
@@ -19,7 +19,9 @@ print(f"ETH funding positive: {(df['eth_funding'] > 0).mean():.1%}")
 print(f"Spread positive (BTC > ETH): {(df['funding_spread'] > 0).mean():.1%}")
 print(f"Spread skewness: {stats.skew(df['funding_spread']):.3f}")
 
-# ====================== MAIN PNG (Prices + Rates + Spread + Monthly) ======================
+abs_spread = np.abs(df['funding_spread'])
+
+# ====================== MAIN PNG ======================
 fig_main = plt.figure(figsize=(16, 22), constrained_layout=True)
 
 ax1 = fig_main.add_subplot(4, 1, 1)
@@ -41,7 +43,6 @@ ax2.legend()
 ax2.set_title('BTC vs ETH Funding Rates (positive = bullish skew)')
 
 ax3 = fig_main.add_subplot(4, 1, 3)
-abs_spread = np.abs(df['funding_spread'])
 sc = ax3.scatter(df.index, df['funding_spread'],
                  c=abs_spread, cmap='RdYlGn_r', s=3, alpha=0.7)
 ax3.axhline(0, color='gray', ls='--', lw=0.8)
@@ -62,12 +63,9 @@ ax4.tick_params(axis='x', rotation=45)
 fig_main.suptitle(f'BTC-ETH Funding Main Analysis\n{df.index[0].date()} — {df.index[-1].date()}', 
                   fontsize=18, fontweight='bold', y=0.98)
 
-plt.savefig('btc_eth_funding_main.png', 
-            dpi=180, 
-            bbox_inches='tight', 
-            facecolor='white')
+plt.savefig('btc_eth_funding_main.png', dpi=180, bbox_inches='tight', facecolor='white')
 
-# ====================== EXTRA PNG (Histogram + Ratio Scatter) ======================
+# ====================== EXTRA PNG ======================
 fig_extra = plt.figure(figsize=(16, 9), constrained_layout=True)
 
 ax5 = fig_extra.add_subplot(1, 2, 1)
@@ -78,7 +76,7 @@ ax5.set_xlabel('Funding Spread')
 
 ax6 = fig_extra.add_subplot(1, 2, 2)
 sc2 = ax6.scatter(df['btc_eth_ratio'], df['funding_spread'],
-                  c=np.abs(df['funding_spread']), cmap='RdYlGn_r', alpha=0.6, s=4)
+                  c=abs_spread, cmap='RdYlGn_r', alpha=0.6, s=4)
 fig_extra.colorbar(sc2, ax=ax6, label='|Spread| Skew Magnitude')
 ax6.axhline(0, color='gray', ls='--')
 ax6.set_xlabel('BTC/ETH Price Ratio')
@@ -88,13 +86,79 @@ ax6.set_title('BTC/ETH Ratio vs Funding Spread')
 fig_extra.suptitle(f'BTC-ETH Funding Extra Charts\n{df.index[0].date()} — {df.index[-1].date()}', 
                    fontsize=16, fontweight='bold')
 
-plt.savefig('btc_eth_funding_extra.png', 
-            dpi=200, 
-            bbox_inches='tight', 
-            facecolor='white')
+plt.savefig('btc_eth_funding_extra.png', dpi=200, bbox_inches='tight', facecolor='white')
 
-# No plt.show() → script finishes instantly
-print("\n✅ DONE! Files saved silently:")
-print("   • btc_eth_funding_main.png     ← Prices + Funding Rates + Spread Skew + Monthly")
-print("   • btc_eth_funding_extra.png    ← Histogram + BTC/ETH Ratio Scatter")
-print("   → Both files ~1.8–2.5 MB and crystal clear")
+# ====================== 24H RATIO CHANGE (for all predictions) ======================
+df['ratio_24h_change'] = df['btc_eth_ratio'].shift(-96) - df['btc_eth_ratio']
+
+# ====================== HIGHLIGHTED LARGE SPREAD CHART ======================
+plt.figure(figsize=(12, 8))
+
+# Background: all points faint
+plt.scatter(df['funding_spread'], df['ratio_24h_change'],
+            c='lightgray', s=3, alpha=0.4, label='All data (small spread)')
+
+# Foreground: only large spreads highlighted
+large_mask = abs_spread > 0.00015
+sc3 = plt.scatter(df.loc[large_mask, 'funding_spread'], 
+                  df.loc[large_mask, 'ratio_24h_change'],
+                  c=abs_spread[large_mask], cmap='RdYlGn_r', s=20, alpha=0.95, 
+                  edgecolor='black', linewidth=0.5, label='Large spread (>0.00015)')
+
+plt.colorbar(sc3, label='|Current Spread| → Skew Magnitude (Large spreads only)')
+plt.axhline(0, color='gray', ls='--', lw=1)
+plt.axvline(0, color='gray', ls='--', lw=1)
+plt.xlabel('Current Funding Spread (BTC - ETH)')
+plt.ylabel('BTC/ETH Ratio Change over Next 24h')
+plt.title('Large Funding Spreads Highlighted vs Future BTC/ETH Ratio Move')
+plt.legend()
+plt.savefig('btc_eth_spread_vs_future_ratio.png', dpi=180, bbox_inches='tight')
+plt.close()
+
+# ====================== NEW: PREDICT LARGE MAGNITUDE RATIO CHANGES ======================
+large_ratio_threshold = df['ratio_24h_change'].abs().quantile(0.90)
+df['large_ratio_move'] = df['ratio_24h_change'].abs() > large_ratio_threshold
+
+print(f"\n=== PREDICTING LARGE BTC/ETH RATIO MOVES (top 10% magnitude) ===")
+print(f"Large move threshold (|24h ratio change|): {large_ratio_threshold:.4f}")
+
+baseline = df['large_ratio_move'].mean()
+when_large_spread = df[abs_spread > 0.00015]['large_ratio_move'].mean()
+
+print(f"Baseline probability of large move: {baseline:.1%}")
+print(f"When |spread| > 0.00015 → probability of large move: {when_large_spread:.1%}")
+print(f"Lift: {when_large_spread / baseline:.2f}x more likely")
+
+# New chart: Large ratio moves highlighted on the spread-vs-change plot
+plt.figure(figsize=(12, 8))
+plt.scatter(df['funding_spread'], df['ratio_24h_change'],
+            c='lightgray', s=3, alpha=0.4)
+
+large_move_mask = df['large_ratio_move']
+plt.scatter(df.loc[large_move_mask, 'funding_spread'], 
+            df.loc[large_move_mask, 'ratio_24h_change'],
+            c='red', s=25, alpha=0.9, edgecolor='black', linewidth=0.5, 
+            label=f'Large ratio move (|Δ| > {large_ratio_threshold:.4f})')
+
+plt.axhline(0, color='gray', ls='--', lw=1)
+plt.axvline(0, color='gray', ls='--', lw=1)
+plt.xlabel('Current Funding Spread (BTC - ETH)')
+plt.ylabel('BTC/ETH Ratio Change over Next 24h')
+plt.title('Large BTC/ETH Ratio Moves Highlighted')
+plt.legend()
+plt.savefig('btc_eth_large_ratio_moves.png', dpi=180, bbox_inches='tight')
+plt.close()
+
+# Top 10 largest funding spreads again (for quick reference)
+df['funding_spread_abs'] = abs_spread
+big_div = df.nlargest(10, 'funding_spread_abs')
+print("\nTop 10 largest funding spreads and 24h BTC/ETH ratio change afterward:")
+print(big_div[['funding_spread', 'ratio_24h_change']].round(6))
+
+# ====================== FINAL MESSAGE ======================
+print("\n✅ ALL DONE! Files saved:")
+print("   • btc_eth_funding_main.png")
+print("   • btc_eth_funding_extra.png")
+print("   • btc_eth_spread_vs_future_ratio.png")
+print("   • btc_eth_large_ratio_moves.png   ← NEW: large magnitude moves highlighted in red")
+print("   → Script finished silently.")
