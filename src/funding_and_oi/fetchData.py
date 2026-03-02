@@ -118,11 +118,11 @@ if __name__ == "__main__":
     INTERVAL = '15m'
     YEARS = 2
     
-    print("Fetching 2 years of BTC data...")
+    print("Fetching 2 years of BTC data... ⌛ pls wait")
     btc_price = get_full_klines('BTCUSDT', INTERVAL, YEARS)
     btc_fund  = get_full_funding_history('BTCUSDT', YEARS)
     
-    print("Fetching 2 years of ETH data...")
+    print("Fetching 2 years of ETH data... ⌛ pls wait")
     eth_price = get_full_klines('ETHUSDT', INTERVAL, YEARS)
     eth_fund  = get_full_funding_history('ETHUSDT', YEARS)
     
