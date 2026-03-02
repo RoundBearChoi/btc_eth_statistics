@@ -21,7 +21,13 @@ print(f"Spread skewness: {stats.skew(df['funding_spread']):.3f}")
 
 abs_spread = np.abs(df['funding_spread'])
 
+# === DYNAMIC LARGE SPREAD THRESHOLD (top 5% largest spreads) ===
+large_spread_threshold = df['funding_spread'].abs().quantile(0.95)
+print(f"\n=== LARGE FUNDING SPREAD THRESHOLD (dynamic) ===")
+print(f"Top 5% largest |spread| threshold: {large_spread_threshold:.6f}")
+
 # ====================== MAIN PNG ======================
+# (unchanged - same as before)
 fig_main = plt.figure(figsize=(16, 22), constrained_layout=True)
 
 ax1 = fig_main.add_subplot(4, 1, 1)
@@ -66,6 +72,7 @@ fig_main.suptitle(f'BTC-ETH Funding Main Analysis\n{df.index[0].date()} — {df.
 plt.savefig('btc_eth_funding_main.png', dpi=180, bbox_inches='tight', facecolor='white')
 
 # ====================== EXTRA PNG ======================
+# (unchanged)
 fig_extra = plt.figure(figsize=(16, 9), constrained_layout=True)
 
 ax5 = fig_extra.add_subplot(1, 2, 1)
@@ -96,11 +103,12 @@ plt.figure(figsize=(12, 8))
 plt.scatter(df['funding_spread'], df['ratio_24h_change'],
             c='lightgray', s=3, alpha=0.4, label='All data (small spread)')
 
-large_mask = abs_spread > 0.00015
+large_mask = abs_spread > large_spread_threshold
 sc3 = plt.scatter(df.loc[large_mask, 'funding_spread'], 
                   df.loc[large_mask, 'ratio_24h_change'],
                   c=abs_spread[large_mask], cmap='RdYlGn_r', s=20, alpha=0.95, 
-                  edgecolor='black', linewidth=0.5, label='Large spread (>0.00015)')
+                  edgecolor='black', linewidth=0.5, 
+                  label=f'Large spread (>{large_spread_threshold:.6f})')
 
 plt.colorbar(sc3, label='|Current Spread| → Skew Magnitude (Large spreads only)')
 plt.axhline(0, color='gray', ls='--', lw=1)
@@ -120,12 +128,13 @@ print(f"\n=== PREDICTING LARGE BTC/ETH RATIO MOVES (top 10% magnitude) ===")
 print(f"Large move threshold (|24h ratio change|): {large_ratio_threshold:.4f}")
 
 baseline = df['large_ratio_move'].mean()
-when_large_spread = df[abs_spread > 0.00015]['large_ratio_move'].mean()
+when_large_spread = df[abs_spread > large_spread_threshold]['large_ratio_move'].mean()
 
 print(f"Baseline probability of large move: {baseline:.1%}")
-print(f"When |spread| > 0.00015 → probability of large move: {when_large_spread:.1%}")
+print(f"When |spread| > {large_spread_threshold:.6f} → probability of large move: {when_large_spread:.1%}")
 print(f"Lift: {when_large_spread / baseline:.2f}x more likely")
 
+# (rest of the large ratio moves chart unchanged)
 plt.figure(figsize=(12, 8))
 plt.scatter(df['funding_spread'], df['ratio_24h_change'],
             c='lightgray', s=3, alpha=0.4)
@@ -150,14 +159,13 @@ big_div = df.nlargest(10, 'funding_spread_abs')
 print("\nTop 10 largest funding spreads and 24h BTC/ETH ratio change afterward:")
 print(big_div[['funding_spread', 'ratio_24h_change']].round(6))
 
-# ====================== SIMPLE SINGLE-LINE 14D FUNDING SPREAD CHART (KST) ======================
-print("\nGenerating Simple 14D Funding Spread Chart (single line, tight Y, KST)...")
+# ====================== SIMPLE SINGLE-LINE 14D FUNDING SPREAD CHART (KST + DYNAMIC LARGE SPREAD LINES) ======================
+print("\nGenerating Simple 14D Funding Spread Chart (KST + dynamic large-spread lines)...")
 
 end_time = df.index.max()
 start_time = end_time - pd.Timedelta(days=14)
 recent_df = df[(df.index >= start_time) & (df.index <= end_time)].copy()
 
-# Convert to KST (UTC+9, no DST)
 recent_df = recent_df.copy()
 recent_df.index = recent_df.index.tz_localize('UTC').tz_convert('Asia/Seoul')
 
@@ -170,23 +178,27 @@ fig, ax = plt.subplots(figsize=(15, 8.5))
 
 spread_scaled = recent_df['funding_spread'] * 1_000_000
 
-# Clean single purple line only
 ax.plot(recent_df.index, spread_scaled, 
         color='purple', lw=3.5, marker='o', markersize=3.5, 
         label='BTC-ETH Funding Spread (Delta)')
 
 ax.axhline(0, color='black', ls='--', lw=1.5)
 
-# Tight Y-zoom focused only on the actual spread values
+# === DYNAMIC LARGE SPREAD THRESHOLDS ===
+large_spread_scaled = large_spread_threshold * 1_000_000
+ax.axhline(large_spread_scaled, color='red', ls='--', lw=1.8, alpha=0.85, 
+           label=f'Large Spread Threshold (±{large_spread_threshold:.6f})')
+ax.axhline(-large_spread_scaled, color='red', ls='--', lw=1.8, alpha=0.85)
+
+# Tight Y-zoom that always shows the thresholds
 data_min = spread_scaled.min()
 data_max = spread_scaled.max()
-data_range = data_max - data_min
-if data_range < 0.1:
-    data_range = 1.0
+data_range = max(data_max - data_min, 1.0)
 padding = 0.25 * data_range
-ax.set_ylim(data_min - padding, data_max + padding)
+ax.set_ylim(min(data_min - padding, -large_spread_scaled*1.15), 
+            max(data_max + padding, large_spread_scaled*1.15))
 
-# Big current-value annotation
+# Current-value annotation
 current_spread = recent_df['funding_spread'].iloc[-1]
 current_scaled = current_spread * 1_000_000
 
@@ -199,11 +211,10 @@ ax.annotate(f'CURRENT SPREAD\n{current_spread:+.8f}\n({current_scaled:+.2f} ×10
 
 ax.set_title('BTC - ETH Funding Rate Difference (Last 14 Days)', fontsize=18, fontweight='bold', pad=20)
 ax.set_ylabel('Spread × 1,000,000', fontsize=14)
-ax.set_xlabel('Time (KST)')                    # ← now KST
-ax.legend(fontsize=12, loc='upper right')
+ax.set_xlabel('Time (KST)')
+ax.legend(fontsize=11, loc='upper right')
 ax.grid(True, alpha=0.35)
 
-# Updated suptitle with KST time
 fig.suptitle(f'Latest data: {recent_df.index[-1].strftime("%Y-%m-%d %H:%M KST")}', 
              fontsize=13, y=0.97)
 
@@ -212,7 +223,7 @@ plt.tight_layout()
 plt.savefig('btc_eth_funding_14d_delta.png', dpi=260, bbox_inches='tight', facecolor='white')
 plt.close()
 
-print(f"   • btc_eth_funding_14d_delta.png  (KST version | Current: {current_spread:+.8f})")
+print(f"   • btc_eth_funding_14d_delta.png  (KST + dynamic ±{large_spread_threshold:.6f} lines | Current: {current_spread:+.8f})")
 
 # ====================== FINAL MESSAGE ======================
 print("\n✅ ALL DONE! Files saved:")
