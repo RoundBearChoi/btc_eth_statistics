@@ -5,7 +5,7 @@ from typing import Optional, Dict
 class CoinGeckoPrices:
     """
     Simple CoinGecko price fetcher.
-    - One API call for all 4 coins
+    - One API call for all coins
     - Always returns fresh prices
     - Automatic 429 retry
     """
@@ -46,23 +46,18 @@ class CoinGeckoPrices:
 
     # ===================== PUBLIC METHODS =====================
     def get_btc_price(self) -> Optional[float]:
-        """Current Bitcoin (BTC) price in USD"""
         return self._fetch_all_prices().get("btc")
 
     def get_eth_price(self) -> Optional[float]:
-        """Current Ethereum (ETH) price in USD"""
         return self._fetch_all_prices().get("eth")
 
     def get_cbbtc_price(self) -> Optional[float]:
-        """Current cbBTC (Coinbase Wrapped BTC) price in USD"""
         return self._fetch_all_prices().get("cbbtc")
 
     def get_weth_price(self) -> Optional[float]:
-        """Current WETH (Wrapped Ether) price in USD"""
         return self._fetch_all_prices().get("weth")
 
     def get_all_prices(self) -> Dict[str, Optional[float]]:
-        """Get all prices at once (recommended for your stats!)"""
         return self._fetch_all_prices()
 
 
