@@ -32,7 +32,7 @@ class CbBTCBalanceChecker:
             raise Exception(f"⚠️ Wrong network! Connected to chain {chain_id} instead of Base (8453)")
 
     # =====================
-    # BALANCE CHECK
+    # BALANCE CHECK - cbBTC (ERC20)
     # =====================
     def get_cbbtc_balance(self, wallet_address):
         contract = self.w3.eth.contract(
@@ -46,6 +46,18 @@ class CbBTCBalanceChecker:
         return Decimal(raw_balance) / Decimal(10 ** decimals)
 
     # =====================
+    # NEW: ETH BALANCE (Native token)
+    # =====================
+    def get_eth_balance(self, wallet_address):
+        """Get native ETH balance on Base.
+        Returns a Decimal with full precision using all 18 decimal points allowed for ETH on Base/EVM chains."""
+        raw_balance_wei = self.w3.eth.get_balance(
+            Web3.to_checksum_address(wallet_address)
+        )
+        # ETH on Base is ALWAYS 18 decimals (no contract call needed)
+        return Decimal(raw_balance_wei) / Decimal(10 ** 18)
+
+    # =====================
     # CLEANUP + CONFIRMATION (now guaranteed to print)
     # =====================
     def close(self):
@@ -56,7 +68,7 @@ class CbBTCBalanceChecker:
         print("Disconnected from Base RPC")
 
     # =====================
-    # RUN (user prompt)
+    # RUN (user prompt) - now shows BOTH balances
     # =====================
     def run(self):
         print('')
@@ -67,13 +79,16 @@ class CbBTCBalanceChecker:
             return
         
         try:
-            balance = self.get_cbbtc_balance(wallet_address)
-            print(f"\n✅ Balance: {balance} cbBTC")
+            eth_balance = self.get_eth_balance(wallet_address)
+            cbbtc_balance = self.get_cbbtc_balance(wallet_address)
+            
+            print(f"\n✅ ETH Balance   : {eth_balance} ETH")
+            print(f"✅ cbBTC Balance : {cbbtc_balance} cbBTC")
         except Exception as e:
             print(f"❌ Error checking balance: {str(e)}")
 
 
 if __name__ == "__main__":
     checker = CbBTCBalanceChecker()      # create
-    checker.run()                        # ask for address + show balance
+    checker.run()                        # ask for address + show both balances
     checker.close()                      # ← explicit close right after run!
