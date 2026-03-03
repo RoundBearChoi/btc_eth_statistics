@@ -6,6 +6,7 @@ class CbBTCBalanceChecker:
     # CONFIG (don't change these)
     # =====================
     CBBTC_ADDRESS = "0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf"   # Official cbBTC on Base
+    WETH_ADDRESS  = "0x4200000000000000000000000000000000000006"   # Official WETH on Base (WETH9)
 
     ERC20_ABI = [
         {"constant": True, "inputs": [], "name": "decimals", "outputs": [{"name": "", "type": "uint8"}], "type": "function"},
@@ -32,9 +33,10 @@ class CbBTCBalanceChecker:
             raise Exception(f"⚠️ Wrong network! Connected to chain {chain_id} instead of Base (8453)")
 
     # =====================
-    # BALANCE CHECK - cbBTC (ERC20)
+    # BALANCE FUNCTIONS - Return pure Decimal (100% accuracy)
     # =====================
-    def get_cbbtc_balance(self, wallet_address):
+    def get_cbbtc_balance(self, wallet_address) -> Decimal:
+        """Returns cbBTC balance as Decimal (exact precision, no float)."""
         contract = self.w3.eth.contract(
             address=Web3.to_checksum_address(self.CBBTC_ADDRESS), 
             abi=self.ERC20_ABI
@@ -45,20 +47,37 @@ class CbBTCBalanceChecker:
         ).call()
         return Decimal(raw_balance) / Decimal(10 ** decimals)
 
-    # =====================
-    # NEW: ETH BALANCE (Native token)
-    # =====================
-    def get_eth_balance(self, wallet_address):
-        """Get native ETH balance on Base.
-        Returns a Decimal with full precision using all 18 decimal points allowed for ETH on Base/EVM chains."""
+    def get_eth_balance(self, wallet_address) -> Decimal:
+        """Returns native ETH balance as Decimal (exact 18 decimals)."""
         raw_balance_wei = self.w3.eth.get_balance(
             Web3.to_checksum_address(wallet_address)
         )
-        # ETH on Base is ALWAYS 18 decimals (no contract call needed)
         return Decimal(raw_balance_wei) / Decimal(10 ** 18)
 
+    def get_weth_balance(self, wallet_address) -> Decimal:
+        """Returns WETH balance as Decimal (exact 18 decimals)."""
+        contract = self.w3.eth.contract(
+            address=Web3.to_checksum_address(self.WETH_ADDRESS), 
+            abi=self.ERC20_ABI
+        )
+        decimals = contract.functions.decimals().call()
+        raw_balance = contract.functions.balanceOf(
+            Web3.to_checksum_address(wallet_address)
+        ).call()
+        return Decimal(raw_balance) / Decimal(10 ** decimals)
+
     # =====================
-    # CLEANUP + CONFIRMATION (now guaranteed to print)
+    # FORMATTING HELPER
+    # =====================
+    def _format_decimal(self, value: Decimal, decimal_places: int) -> str:
+        """Internal helper: forces clean decimal string (no scientific E-notation).
+        Keeps 100% Decimal accuracy - just prettier printing."""
+        quantizer = Decimal('1') / (Decimal('10') ** decimal_places)
+        quantized = value.quantize(quantizer)
+        return f"{quantized:f}"
+
+    # =====================
+    # CLEANUP + CONFIRMATION
     # =====================
     def close(self):
         """Properly disconnect (if available) and always show confirmation"""
@@ -68,7 +87,7 @@ class CbBTCBalanceChecker:
         print("Disconnected from Base RPC")
 
     # =====================
-    # RUN (user prompt) - now shows BOTH balances
+    # RUN (user prompt)
     # =====================
     def run(self):
         print('')
@@ -79,16 +98,18 @@ class CbBTCBalanceChecker:
             return
         
         try:
-            eth_balance = self.get_eth_balance(wallet_address)
+            eth_balance   = self.get_eth_balance(wallet_address)
+            weth_balance  = self.get_weth_balance(wallet_address)
             cbbtc_balance = self.get_cbbtc_balance(wallet_address)
             
-            print(f"\n✅ ETH Balance   : {eth_balance} ETH")
-            print(f"✅ cbBTC Balance : {cbbtc_balance} cbBTC")
+            print(f"\n✅ ETH Balance   : {self._format_decimal(eth_balance, 18)} ETH")
+            print(f"✅ WETH Balance  : {self._format_decimal(weth_balance, 18)} WETH")
+            print(f"✅ cbBTC Balance : {self._format_decimal(cbbtc_balance, 8)} cbBTC")
         except Exception as e:
             print(f"❌ Error checking balance: {str(e)}")
 
 
 if __name__ == "__main__":
-    checker = CbBTCBalanceChecker()      # create
-    checker.run()                        # ask for address + show both balances
-    checker.close()                      # ← explicit close right after run!
+    checker = CbBTCBalanceChecker()
+    checker.run()
+    checker.close()
