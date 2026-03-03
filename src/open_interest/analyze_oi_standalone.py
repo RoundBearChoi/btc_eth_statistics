@@ -35,35 +35,43 @@ class BTCETHOIAnalyzerStandalone:
         plt.close()
 
     def _fourteen_day_dual_chart(self):
-        print("\nGenerating 14-day standalone chart (KST)...")
+        print("\nGenerating 14-day stacked chart (KST)...")
         end_time = self.recent.index.max()
         start_time = end_time - pd.Timedelta(days=14)
         plot_df = self.recent[(self.recent.index >= start_time) & (self.recent.index <= end_time)].copy()
         plot_df.index = plot_df.index.tz_localize('UTC').tz_convert('Asia/Seoul')
 
-        fig, ax1 = plt.subplots(figsize=(15, 8.5))
-        ax1.plot(plot_df.index, plot_df['btc_eth_oi_ratio'], color='teal', lw=3, label='BTC/ETH OI Ratio (USD)')
-        ax1.set_ylabel('OI Ratio (USD)', color='teal')
+        # === NEW: Two separate subplots (Price on top, OI on bottom) ===
+        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(15, 9.5), sharex=True, gridspec_kw={'height_ratios': [1, 1]})
 
-        ax2 = ax1.twinx()
-        ax2.plot(plot_df.index, plot_df['btc_eth_price_ratio'], color='orange', lw=2.5, label='BTC/ETH Price Ratio')
-        ax2.set_ylabel('Price Ratio', color='orange')
+        # Top chart: Price Ratio (orange)
+        ax1.plot(plot_df.index, plot_df['btc_eth_price_ratio'], color='orange', lw=2.5, label='BTC/ETH Price Ratio')
+        ax1.set_ylabel('Price Ratio', color='orange')
+        ax1.set_title('BTC/ETH Price Ratio (Last 14 Days)', fontsize=14, fontweight='bold')
+        ax1.grid(True, alpha=0.3)
+        ax1.legend(loc='upper left')
 
+        # Bottom chart: OI Ratio (teal)
+        ax2.plot(plot_df.index, plot_df['btc_eth_oi_ratio'], color='teal', lw=3, label='BTC/ETH OI Ratio (USD)')
+        ax2.set_ylabel('OI Ratio (USD)', color='teal')
+        ax2.set_title('BTC/ETH OI Ratio (USD) (Last 14 Days)', fontsize=14, fontweight='bold')
+        ax2.grid(True, alpha=0.3)
+        ax2.legend(loc='upper left')
+
+        # CURRENT annotation on the OI chart
         current_oi = plot_df['btc_eth_oi_ratio'].iloc[-1]
-        ax1.annotate(f'CURRENT\nOI Ratio: {current_oi:.3f}', 
+        ax2.annotate(f'CURRENT\nOI Ratio: {current_oi:.3f}',
                      xy=(plot_df.index[-1], current_oi),
                      xytext=(30, 40), textcoords='offset points', fontsize=14, fontweight='bold',
                      bbox=dict(boxstyle="round,pad=0.8", facecolor='yellow', alpha=0.95))
 
-        ax1.set_title('BTC-ETH OI Ratio vs Price Ratio (Last 14 Days)', fontsize=18, fontweight='bold')
-        ax1.grid(True, alpha=0.3)
-        fig.suptitle(f'Latest: {plot_df.index[-1].strftime("%Y-%m-%d %H:%M KST")}', y=0.96)
-        plt.legend(loc='upper left')
+        fig.suptitle(f'BTC-ETH OI vs Price Ratio (Last 14 Days) — Stacked for Clarity\nLatest: {plot_df.index[-1].strftime("%Y-%m-%d %H:%M KST")}', 
+                     y=0.96, fontsize=18, fontweight='bold')
         plt.xticks(rotation=45)
         plt.tight_layout()
         plt.savefig('btc_eth_oi_14d_standalone.png', dpi=160, bbox_inches='tight', facecolor='white')
         plt.close()
-        print("   • btc_eth_oi_14d_standalone.png  (pure OI + price ratio)")
+        print("   • btc_eth_oi_14d_standalone.png  (stacked: Price on top • OI on bottom)")
 
     def _oi_spike_detector_chart(self):
         print("\nGenerating OI Spike/Drop Detector chart (last 60 days, KST)...")
@@ -153,7 +161,7 @@ class BTCETHOIAnalyzerStandalone:
         self._oi_spike_detector_chart()
         print("\n✅ Standalone OI Analysis complete! Charts saved:")
         print("   • btc_eth_large_oi_vs_price.png")
-        print("   • btc_eth_oi_14d_standalone.png")
+        print("   • btc_eth_oi_14d_standalone.png   ← stacked (Price top • OI bottom)")
         print("   • btc_eth_oi_spike_detector.png   ← TODAY always highlighted with exact time!")
 
 if __name__ == "__main__":
