@@ -74,7 +74,7 @@ class BTCETHOIAnalyzerStandalone:
         start_time = end_time - pd.Timedelta(days=60)
         plot_df = self.recent[self.recent.index >= start_time].copy()
         
-        # === FIX: Drop rows with NaN 24h change (latest row often incomplete) ===
+        # Drop rows with NaN 24h change (latest row often incomplete)
         plot_df = plot_df.dropna(subset=['oi_ratio_24h_change']).copy()
         
         # Convert to KST
@@ -100,9 +100,10 @@ class BTCETHOIAnalyzerStandalone:
                    label=f'Drop Threshold (-{self.large_oi_threshold:.4f})')
         plt.axhline(0, color='black', lw=1)
         
-        # FORCE TODAY HIGHLIGHT (now always works)
+        # FORCE TODAY HIGHLIGHT
         latest_idx = -1
         latest_change = plot_df['oi_ratio_24h_change'].iloc[latest_idx]
+        latest_time_str = plot_df.index[latest_idx].strftime("%Y-%m-%d %H:%M KST")
         latest_bar = bars[latest_idx]
         
         latest_bar.set_color('#ffeb3b')
@@ -118,17 +119,17 @@ class BTCETHOIAnalyzerStandalone:
         else:
             status = "Normal"
         
-        # Annotation with arrow
-        offset_y = 38 if latest_change >= 0 else -62
-        plt.annotate(f'TODAY\n{latest_change:+.4f}\n{status}', 
+        # Annotation with time + arrow
+        offset_y = 42 if latest_change >= 0 else -72
+        plt.annotate(f'TODAY\n({latest_time_str})\n{latest_change:+.4f}\n{status}', 
                     xy=(plot_df.index[latest_idx], latest_change),
                     xytext=(15, offset_y),
                     textcoords='offset points',
-                    fontsize=14,
+                    fontsize=13,
                     fontweight='bold',
                     ha='left',
                     arrowprops=dict(arrowstyle='->', color='black', lw=1.8),
-                    bbox=dict(boxstyle="round,pad=0.8", facecolor='yellow', alpha=0.98, edgecolor='orange'))
+                    bbox=dict(boxstyle="round,pad=0.9", facecolor='yellow', alpha=0.98, edgecolor='orange'))
         
         plt.title('BTC/ETH OI Ratio 24h Change — Spike / Drop Detector', 
                  fontsize=16, fontweight='bold')
@@ -142,7 +143,7 @@ class BTCETHOIAnalyzerStandalone:
         plt.savefig('btc_eth_oi_spike_detector.png', dpi=160, bbox_inches='tight')
         plt.close()
         
-        print(f"   • btc_eth_oi_spike_detector.png  →  {status} ({latest_change:+.4f})")
+        print(f"   • btc_eth_oi_spike_detector.png  →  {status} ({latest_change:+.4f}) @ {latest_time_str}")
         print(f"     Thresholds (±95th percentile): ±{self.large_oi_threshold:.4f}")
 
     def run(self):
@@ -153,7 +154,7 @@ class BTCETHOIAnalyzerStandalone:
         print("\n✅ Standalone OI Analysis complete! Charts saved:")
         print("   • btc_eth_large_oi_vs_price.png")
         print("   • btc_eth_oi_14d_standalone.png")
-        print("   • btc_eth_oi_spike_detector.png   ← TODAY always highlighted!")
+        print("   • btc_eth_oi_spike_detector.png   ← TODAY always highlighted with exact time!")
 
 if __name__ == "__main__":
     analyzer = BTCETHOIAnalyzerStandalone()
