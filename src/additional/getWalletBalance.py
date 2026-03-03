@@ -1,5 +1,3 @@
-#getWalletBalance.py
-
 import requests
 from web3 import Web3
 import csv
