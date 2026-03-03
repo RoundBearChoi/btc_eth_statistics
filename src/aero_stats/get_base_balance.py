@@ -1,7 +1,7 @@
 from decimal import Decimal
 from web3 import Web3
 
-class CbBTCBalanceChecker:
+class BaseBalanceChecker:
     # =====================
     # CONFIG (don't change these)
     # =====================
@@ -110,6 +110,6 @@ class CbBTCBalanceChecker:
 
 
 if __name__ == "__main__":
-    checker = CbBTCBalanceChecker()
+    checker = BaseBalanceChecker()
     checker.run()
     checker.close()
