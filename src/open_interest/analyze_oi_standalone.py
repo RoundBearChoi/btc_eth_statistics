@@ -74,52 +74,61 @@ class BTCETHOIAnalyzerStandalone:
         start_time = end_time - pd.Timedelta(days=60)
         plot_df = self.recent[self.recent.index >= start_time].copy()
         
-        # Convert to KST (matches your other chart)
+        # === FIX: Drop rows with NaN 24h change (latest row often incomplete) ===
+        plot_df = plot_df.dropna(subset=['oi_ratio_24h_change']).copy()
+        
+        # Convert to KST
         plot_df.index = plot_df.index.tz_localize('UTC').tz_convert('Asia/Seoul')
         
-        # Color bars: red=spike, blue=drop, gray=normal
+        # Color bars
         colors = []
         for val in plot_df['oi_ratio_24h_change']:
             if val > self.large_oi_threshold:
-                colors.append('#d62728')   # red
+                colors.append('#d62728')
             elif val < -self.large_oi_threshold:
-                colors.append('#1f77b4')   # blue
+                colors.append('#1f77b4')
             else:
-                colors.append('#7f7f7f')   # gray
+                colors.append('#7f7f7f')
         
         bars = plt.bar(plot_df.index, plot_df['oi_ratio_24h_change'], 
-                       color=colors, alpha=0.85, width=0.85)
+                       color=colors, alpha=0.85, width=0.85, zorder=2)
         
-        # Red/blue threshold lines
+        # Threshold lines
         plt.axhline(self.large_oi_threshold, color='red', linestyle='--', lw=2.5,
                    label=f'Spike Threshold (+{self.large_oi_threshold:.4f})')
         plt.axhline(-self.large_oi_threshold, color='blue', linestyle='--', lw=2.5,
                    label=f'Drop Threshold (-{self.large_oi_threshold:.4f})')
         plt.axhline(0, color='black', lw=1)
         
-        # Highlight TODAY
+        # FORCE TODAY HIGHLIGHT (now always works)
         latest_idx = -1
         latest_change = plot_df['oi_ratio_24h_change'].iloc[latest_idx]
-        bars[latest_idx].set_color('#ffeb3b')   # bright yellow
-        bars[latest_idx].set_edgecolor('black')
-        bars[latest_idx].set_linewidth(3)
+        latest_bar = bars[latest_idx]
         
-        # Status label
+        latest_bar.set_color('#ffeb3b')
+        latest_bar.set_edgecolor('black')
+        latest_bar.set_linewidth(4)
+        latest_bar.set_zorder(5)
+        
+        # Status
         if latest_change > self.large_oi_threshold:
             status = "STRONG SPIKE ↑"
-            color = "red"
         elif latest_change < -self.large_oi_threshold:
             status = "STRONG DROP ↓"
-            color = "blue"
         else:
-            status = "Normal move"
-            color = "black"
+            status = "Normal"
         
+        # Annotation with arrow
+        offset_y = 38 if latest_change >= 0 else -62
         plt.annotate(f'TODAY\n{latest_change:+.4f}\n{status}', 
                     xy=(plot_df.index[latest_idx], latest_change),
-                    xytext=(8, 30 if latest_change > 0 else -50),
-                    textcoords='offset points', fontsize=13, fontweight='bold',
-                    bbox=dict(boxstyle="round,pad=0.8", facecolor='yellow', alpha=0.95))
+                    xytext=(15, offset_y),
+                    textcoords='offset points',
+                    fontsize=14,
+                    fontweight='bold',
+                    ha='left',
+                    arrowprops=dict(arrowstyle='->', color='black', lw=1.8),
+                    bbox=dict(boxstyle="round,pad=0.8", facecolor='yellow', alpha=0.98, edgecolor='orange'))
         
         plt.title('BTC/ETH OI Ratio 24h Change — Spike / Drop Detector', 
                  fontsize=16, fontweight='bold')
@@ -144,7 +153,7 @@ class BTCETHOIAnalyzerStandalone:
         print("\n✅ Standalone OI Analysis complete! Charts saved:")
         print("   • btc_eth_large_oi_vs_price.png")
         print("   • btc_eth_oi_14d_standalone.png")
-        print("   • btc_eth_oi_spike_detector.png   ← NEW: Today's spike/drop status!")
+        print("   • btc_eth_oi_spike_detector.png   ← TODAY always highlighted!")
 
 if __name__ == "__main__":
     analyzer = BTCETHOIAnalyzerStandalone()
