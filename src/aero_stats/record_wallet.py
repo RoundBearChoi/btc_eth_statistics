@@ -18,9 +18,9 @@ def get_kst_now() -> str:
 
 
 def main():
-    print("🔍 Base Wallet Recorder (ETH + WETH + cbBTC + Prices)\n")
+    print("🔍 Base Wallet Recorder (with BTC-Equivalent)\n")
 
-    # Ask for wallet address (same UX as your get_base_balance.py)
+    # Ask for wallet address
     wallet_address = input("Enter your Base wallet address: ").strip()
     if not wallet_address:
         print("❌ No address provided.")
@@ -46,7 +46,20 @@ def main():
         # === Current KST Timestamp ===
         timestamp_kst = get_kst_now()
 
-        # === Prepare row for CSV (balances saved as exact strings) ===
+        # === NEW: Calculate BTC Equivalent ===
+        # cbBTC = 1:1 BTC
+        # (ETH + WETH) converted using current ETH/BTC price ratio
+        total_eth = eth_balance + weth_balance
+        
+        if btc_price and eth_price and btc_price > 0:
+            eth_in_btc = total_eth * Decimal(str(eth_price)) / Decimal(str(btc_price))
+            btc_equivalent = cbbtc_balance + eth_in_btc
+            btc_equiv_str = f"{btc_equivalent:.8f}"
+        else:
+            btc_equivalent = Decimal("0")
+            btc_equiv_str = "N/A"
+
+        # === Prepare row for CSV ===
         row = {
             "timestamp_kst": timestamp_kst,
             "wallet_address": wallet_address,
@@ -55,6 +68,7 @@ def main():
             "cbbtc_balance": str(cbbtc_balance),
             "btc_price_usd": f"{btc_price:,.2f}" if btc_price is not None else "N/A",
             "eth_price_usd": f"{eth_price:,.2f}" if eth_price is not None else "N/A",
+            "btc-equivalent": btc_equiv_str,          # ← NEW COLUMN (exact name you asked for)
         }
 
         # === Append to CSV (create file + header on first run) ===
@@ -67,16 +81,17 @@ def main():
             writer.writerow(row)
 
         # === Pretty summary ===
-        print("\n" + "═" * 70)
+        print("\n" + "═" * 80)
         print(f"✅ SUCCESSFULLY RECORDED — {timestamp_kst}")
-        print(f"Wallet     : {wallet_address}")
-        print(f"ETH        : {float(eth_balance):,.8f} ETH")
-        print(f"WETH       : {float(weth_balance):,.8f} WETH")
-        print(f"cbBTC      : {float(cbbtc_balance):,.8f} cbBTC")
-        print("-" * 70)
-        print(f"BTC Price  : ${btc_price:,.2f}" if btc_price is not None else "BTC Price  : ❌ Failed")
-        print(f"ETH Price  : ${eth_price:,.2f}" if eth_price is not None else "ETH Price  : ❌ Failed")
-        print("═" * 70)
+        print(f"Wallet         : {wallet_address}")
+        print(f"ETH            : {float(eth_balance):,.8f} ETH")
+        print(f"WETH           : {float(weth_balance):,.8f} WETH")
+        print(f"cbBTC          : {float(cbbtc_balance):,.8f} cbBTC")
+        print("-" * 80)
+        print(f"BTC Price      : ${btc_price:,.2f}" if btc_price is not None else "BTC Price      : ❌ Failed")
+        print(f"ETH Price      : ${eth_price:,.2f}" if eth_price is not None else "ETH Price      : ❌ Failed")
+        print(f"BTC-Equivalent : {btc_equiv_str} BTC")
+        print("═" * 80)
         print(f"💾 Data saved to: {CSV_FILENAME} (same folder as this script)")
 
     except Exception as e:
