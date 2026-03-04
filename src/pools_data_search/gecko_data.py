@@ -40,7 +40,7 @@ class GeckoPoolScanner:
             ("solana",    "orca"),
             ("solana",    "raydium"),
             ("base",      "aerodrome-slipstream"),
-            ("bsc",       "pancakeswap-v3"),
+            #("bsc",       "pancakeswap-v3"),
         ]
 
     def _rate_limit_sleep(self):
