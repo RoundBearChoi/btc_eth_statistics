@@ -26,7 +26,7 @@ class AeroChart:
         self.df['Position'] = self.df['Signal'].diff()
 
     def plot_and_save(self, days: int = 5):
-        """Generate chart + dedicated bottom panel for trend results (no overlap)."""
+        """Generate chart + dedicated bottom panel (DPI=150)."""
         last_date = self.df.index.max()
         self.plot_df = self.df[self.df.index >= last_date - pd.Timedelta(days=days)]
 
@@ -57,35 +57,42 @@ class AeroChart:
         ax2.set_ylabel('Volume')
         ax2.grid(True, alpha=0.3)
 
-        # ====================== DEDICATED BOTTOM PANEL FOR RESULTS ======================
+        # ====================== DEDICATED BOTTOM PANEL ======================
         ax3 = plt.subplot2grid((5, 1), (4, 0))
         ax3.axis('off')
 
         latest = self.df.iloc[-1]
         latest_time = self.df.index[-1].strftime('%Y-%m-%d %H:%M')
         is_bullish = latest['EMA21'] > latest['EMA50']
-        trend_text = "UPTREND (Bullish)" if is_bullish else "DOWNTREND (Bearish)"
-        strength = "Strong" if (is_bullish and latest['close'] > latest['EMA21']) or \
-                          (not is_bullish and latest['close'] < latest['EMA21']) else "Moderate"
+
+        # 4 clear states (no ** markdown)
+        if is_bullish:
+            direction = "Bullish"
+            strength = "Strong" if latest['close'] > latest['EMA21'] else "Weak"
+        else:
+            direction = "Bearish"
+            strength = "Strong" if latest['close'] < latest['EMA21'] else "Weak"
+
+        full_trend = f"{strength} {direction}"
 
         text = f"Latest data: {latest_time}\n" \
                f"Latest Close Price : {latest['close']:.4f}\n" \
-               f"Overall Trend      : **{trend_text}** - {strength}"
+               f"Overall Trend : {full_trend}\n"
 
         if len(self.df) > 48:
             change_4h = (latest['close'] - self.df.iloc[-49]['close']) / self.df.iloc[-49]['close'] * 100
-            text += f"\nLast 4 hours change: {change_4h:+.2f}%"
+            text += f"Last 4 hours change: {change_4h:+.2f}%"
 
         ax3.text(0.5, 0.5, text, ha='center', va='center', fontsize=13, fontweight='bold',
-                 linespacing=1.4,
+                 linespacing=1.5,
                  bbox=dict(boxstyle="round,pad=1.2", facecolor="white", alpha=0.98, edgecolor="#333333"))
 
         plt.tight_layout()
 
-        # ====================== SAVE WITH DPI=150 ======================
+        # ====================== SAVE ======================
         filename = f"AERO_{days}day_EMA_chart.png"
         plt.savefig(filename, dpi=150, bbox_inches='tight')
-        print(f"✅ Chart saved as: {filename}  (DPI=150 + dedicated bottom trend panel)")
+        print(f"✅ Chart saved as: {filename}")
 
         plt.close()
 
@@ -99,14 +106,15 @@ class AeroChart:
         print(f"EMA21              : {latest['EMA21']:.4f}")
         print(f"EMA50              : {latest['EMA50']:.4f}")
 
-        if latest['EMA21'] > latest['EMA50']:
-            trend = "UPTREND (Bullish)"
-            strength = "Strong" if latest['close'] > latest['EMA21'] else "Moderate"
+        is_bullish = latest['EMA21'] > latest['EMA50']
+        if is_bullish:
+            direction = "Bullish"
+            strength = "Strong" if latest['close'] > latest['EMA21'] else "Weak"
         else:
-            trend = "DOWNTREND (Bearish)"
-            strength = "Strong" if latest['close'] < latest['EMA21'] else "Moderate"
+            direction = "Bearish"
+            strength = "Strong" if latest['close'] < latest['EMA21'] else "Weak"
 
-        print(f"Overall Trend      : **{trend}** - {strength}")
+        print(f"Overall Trend      : {strength} {direction}")
 
         if len(self.df) > 48:
             change_4h = (latest['close'] - self.df.iloc[-49]['close']) / self.df.iloc[-49]['close'] * 100
