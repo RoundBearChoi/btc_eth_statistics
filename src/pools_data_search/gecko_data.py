@@ -161,7 +161,7 @@ if __name__ == "__main__":
     scanner = GeckoPoolScanner(
         min_liquidity_usd=1_000_000,
         min_daily_tx=10_000,
-        max_pages_per_dex=10,           # feel free to increase to 15–20 if you want deeper results
+        max_pages_per_dex=5,           # feel free to increase to 15–20 if you want deeper results
         sleep_between_pages=7.5,
         sleep_between_dexes=18.0,
         calls_per_min_cap=20,
