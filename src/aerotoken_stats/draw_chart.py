@@ -26,14 +26,14 @@ class AeroChart:
         self.df['Position'] = self.df['Signal'].diff()
 
     def plot_and_save(self, days: int = 5):
-        """Generate chart for last N days and save high-res PNG (no blocking window)."""
+        """Generate chart + dedicated bottom panel for trend results (no overlap)."""
         last_date = self.df.index.max()
         self.plot_df = self.df[self.df.index >= last_date - pd.Timedelta(days=days)]
 
-        plt.figure(figsize=(15, 9))
+        plt.figure(figsize=(15, 10.5))   # slightly taller for clean bottom panel
 
         # Price + EMAs
-        ax1 = plt.subplot2grid((4, 1), (0, 0), rowspan=3)
+        ax1 = plt.subplot2grid((5, 1), (0, 0), rowspan=3)
         ax1.plot(self.plot_df['close'], label='Close Price', color='black', linewidth=1.1)
         ax1.plot(self.plot_df['EMA21'], label='EMA 21 (short)', color='#FF9800', linewidth=2)
         ax1.plot(self.plot_df['EMA50'], label='EMA 50 (slightly longer)', color='#2196F3', linewidth=2)
@@ -49,26 +49,48 @@ class AeroChart:
         ax1.set_title(f'AERO Token - 5m Chart with EMA21 & EMA50 (Last {days} Days)')
         ax1.set_ylabel('Price (USDT)')
         ax1.grid(True, alpha=0.3)
-        ax1.legend()
+        ax1.legend(loc='upper left')
 
         # Volume
-        ax2 = plt.subplot2grid((4, 1), (3, 0), sharex=ax1)
+        ax2 = plt.subplot2grid((5, 1), (3, 0), sharex=ax1)
         ax2.bar(self.plot_df.index, self.plot_df['volume'], color='gray', alpha=0.7)
         ax2.set_ylabel('Volume')
         ax2.grid(True, alpha=0.3)
 
+        # ====================== DEDICATED BOTTOM PANEL FOR RESULTS ======================
+        ax3 = plt.subplot2grid((5, 1), (4, 0))
+        ax3.axis('off')
+
+        latest = self.df.iloc[-1]
+        latest_time = self.df.index[-1].strftime('%Y-%m-%d %H:%M')
+        is_bullish = latest['EMA21'] > latest['EMA50']
+        trend_text = "UPTREND (Bullish)" if is_bullish else "DOWNTREND (Bearish)"
+        strength = "Strong" if (is_bullish and latest['close'] > latest['EMA21']) or \
+                          (not is_bullish and latest['close'] < latest['EMA21']) else "Moderate"
+
+        text = f"Latest data: {latest_time}\n" \
+               f"Latest Close Price : {latest['close']:.4f}\n" \
+               f"Overall Trend      : **{trend_text}** - {strength}"
+
+        if len(self.df) > 48:
+            change_4h = (latest['close'] - self.df.iloc[-49]['close']) / self.df.iloc[-49]['close'] * 100
+            text += f"\nLast 4 hours change: {change_4h:+.2f}%"
+
+        ax3.text(0.5, 0.5, text, ha='center', va='center', fontsize=13, fontweight='bold',
+                 linespacing=1.4,
+                 bbox=dict(boxstyle="round,pad=1.2", facecolor="white", alpha=0.98, edgecolor="#333333"))
+
         plt.tight_layout()
 
-        # Save PNG (timestamped so you never overwrite)
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M')
-        filename = f"AERO_{days}day_EMA_chart_{timestamp}.png"
-        plt.savefig(filename, dpi=300, bbox_inches='tight')
-        print(f"✅ Chart saved as: {filename}")
+        # ====================== SAVE WITH DPI=150 ======================
+        filename = f"AERO_{days}day_EMA_chart.png"
+        plt.savefig(filename, dpi=150, bbox_inches='tight')
+        print(f"✅ Chart saved as: {filename}  (DPI=150 + dedicated bottom trend panel)")
 
-        plt.close()  # No blocking window
+        plt.close()
 
     def print_analysis(self):
-        """Print today's trend summary."""
+        """Print today's trend summary (console only)."""
         latest = self.df.iloc[-1]
         print("\n" + "="*60)
         print("AERO TOKEN - TODAY'S TREND ANALYSIS")
@@ -95,7 +117,7 @@ class AeroChart:
         print("="*60)
 
     def run(self, days: int = 5):
-        """Full workflow in one call (exactly like before)."""
+        """Full workflow in one call."""
         self.load_data()
         self.calculate_indicators()
         self.plot_and_save(days=days)
@@ -104,5 +126,5 @@ class AeroChart:
 
 # ====================== RUN IT ======================
 if __name__ == "__main__":
-    chart = AeroChart()      # you can also do AeroChart('another_file.csv')
-    chart.run(days=5)        # change number if you ever want more/less days
+    chart = AeroChart()
+    chart.run(days=5)
