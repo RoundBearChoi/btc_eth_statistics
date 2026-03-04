@@ -3,79 +3,106 @@ import matplotlib.pyplot as plt
 import numpy as np
 from datetime import datetime
 
-# 1. Load the data
-df = pd.read_csv('AERO_5m_3weeks_bybit.csv')
-df['datetime'] = pd.to_datetime(df['datetime'])
-df = df.set_index('datetime')
-df = df.sort_index()
+class AeroChart:
+    """Clean class for AERO 5m chart with EMA21/EMA50 + auto PNG export."""
 
-# 2. Calculate two EMAs
-df['EMA21'] = df['close'].ewm(span=21, adjust=False).mean()   # short-term (~1.75 hours)
-df['EMA50'] = df['close'].ewm(span=50, adjust=False).mean()   # slightly longer (~4 hours)
+    def __init__(self, csv_file: str = 'AERO_5m_3weeks_bybit.csv'):
+        self.csv_file = csv_file
+        self.df = None
+        self.plot_df = None
 
-# 3. Detect crossovers
-df['Signal'] = np.where(df['EMA21'] > df['EMA50'], 1, 0)
-df['Position'] = df['Signal'].diff()
+    def load_data(self):
+        """Load and prepare the CSV."""
+        self.df = pd.read_csv(self.csv_file)
+        self.df['datetime'] = pd.to_datetime(self.df['datetime'])
+        self.df = self.df.set_index('datetime')
+        self.df = self.df.sort_index()
 
-# ================== PLOT (only last 5 days) ==================
-last_date = df.index.max()
-plot_df = df[df.index >= last_date - pd.Timedelta(days=5)]
+    def calculate_indicators(self):
+        """Add EMA21, EMA50 and crossover signals."""
+        self.df['EMA21'] = self.df['close'].ewm(span=21, adjust=False).mean()
+        self.df['EMA50'] = self.df['close'].ewm(span=50, adjust=False).mean()
+        self.df['Signal'] = np.where(self.df['EMA21'] > self.df['EMA50'], 1, 0)
+        self.df['Position'] = self.df['Signal'].diff()
 
-plt.figure(figsize=(15, 9))
+    def plot_and_save(self, days: int = 5):
+        """Generate chart for last N days and save high-res PNG (no blocking window)."""
+        last_date = self.df.index.max()
+        self.plot_df = self.df[self.df.index >= last_date - pd.Timedelta(days=days)]
 
-# Price + EMAs
-ax1 = plt.subplot2grid((4, 1), (0, 0), rowspan=3)
-ax1.plot(plot_df['close'], label='Close Price', color='black', linewidth=1.1)
-ax1.plot(plot_df['EMA21'], label='EMA 21 (short)', color='#FF9800', linewidth=2)
-ax1.plot(plot_df['EMA50'], label='EMA 50 (slightly longer)', color='#2196F3', linewidth=2)
+        plt.figure(figsize=(15, 9))
 
-# Mark crossovers
-golden = plot_df[plot_df['Position'] == 1]
-death = plot_df[plot_df['Position'] == -1]
-ax1.scatter(golden.index, golden['EMA21'], marker='^', color='green', s=120, label='Golden Cross (Bullish)', zorder=5)
-ax1.scatter(death.index, death['EMA21'], marker='v', color='red', s=120, label='Death Cross (Bearish)', zorder=5)
+        # Price + EMAs
+        ax1 = plt.subplot2grid((4, 1), (0, 0), rowspan=3)
+        ax1.plot(self.plot_df['close'], label='Close Price', color='black', linewidth=1.1)
+        ax1.plot(self.plot_df['EMA21'], label='EMA 21 (short)', color='#FF9800', linewidth=2)
+        ax1.plot(self.plot_df['EMA50'], label='EMA 50 (slightly longer)', color='#2196F3', linewidth=2)
 
-ax1.set_title('AERO Token - 5m Chart with EMA21 & EMA50 Crossovers (Last 5 Days)')
-ax1.set_ylabel('Price (USDT)')
-ax1.grid(True, alpha=0.3)
-ax1.legend()
+        # Crossovers
+        golden = self.plot_df[self.plot_df['Position'] == 1]
+        death = self.plot_df[self.plot_df['Position'] == -1]
+        ax1.scatter(golden.index, golden['EMA21'], marker='^', color='green', s=120,
+                    label='Golden Cross (Bullish)', zorder=5)
+        ax1.scatter(death.index, death['EMA21'], marker='v', color='red', s=120,
+                    label='Death Cross (Bearish)', zorder=5)
 
-# Volume
-ax2 = plt.subplot2grid((4, 1), (3, 0), sharex=ax1)
-ax2.bar(plot_df.index, plot_df['volume'], color='gray', alpha=0.7)
-ax2.set_ylabel('Volume')
-ax2.grid(True, alpha=0.3)
+        ax1.set_title(f'AERO Token - 5m Chart with EMA21 & EMA50 (Last {days} Days)')
+        ax1.set_ylabel('Price (USDT)')
+        ax1.grid(True, alpha=0.3)
+        ax1.legend()
 
-plt.tight_layout()
+        # Volume
+        ax2 = plt.subplot2grid((4, 1), (3, 0), sharex=ax1)
+        ax2.bar(self.plot_df.index, self.plot_df['volume'], color='gray', alpha=0.7)
+        ax2.set_ylabel('Volume')
+        ax2.grid(True, alpha=0.3)
 
-# ====================== EXPORT TO PNG ======================
-filename = f"AERO_5day_EMA_chart_{datetime.now().strftime('%Y%m%d_%H%M')}.png"
-plt.savefig(filename, dpi=150, bbox_inches='tight')
-print(f"✅ Chart saved as: {filename}")
+        plt.tight_layout()
 
-plt.show()
+        # Save PNG (timestamped so you never overwrite)
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M')
+        filename = f"AERO_{days}day_EMA_chart_{timestamp}.png"
+        plt.savefig(filename, dpi=300, bbox_inches='tight')
+        print(f"✅ Chart saved as: {filename}")
 
-# ================== TODAY'S TREND ANALYSIS ==================
-latest = df.iloc[-1]
-print("\n=== TODAY'S TREND ANALYSIS (latest data) ===")
-print(f"Latest Close Price : {latest['close']:.4f}")
-print(f"EMA21              : {latest['EMA21']:.4f}")
-print(f"EMA50              : {latest['EMA50']:.4f}")
+        plt.close()  # No blocking window
 
-if latest['EMA21'] > latest['EMA50']:
-    trend = "UPTREND (Bullish)"
-    strength = "Strong" if latest['close'] > latest['EMA21'] else "Moderate"
-else:
-    trend = "DOWNTREND (Bearish)"
-    strength = "Strong" if latest['close'] < latest['EMA21'] else "Moderate"
+    def print_analysis(self):
+        """Print today's trend summary."""
+        latest = self.df.iloc[-1]
+        print("\n" + "="*60)
+        print("AERO TOKEN - TODAY'S TREND ANALYSIS")
+        print("="*60)
+        print(f"Latest Close Price : {latest['close']:.4f}")
+        print(f"EMA21              : {latest['EMA21']:.4f}")
+        print(f"EMA50              : {latest['EMA50']:.4f}")
 
-print(f"Overall Trend      : **{trend}** - {strength}")
+        if latest['EMA21'] > latest['EMA50']:
+            trend = "UPTREND (Bullish)"
+            strength = "Strong" if latest['close'] > latest['EMA21'] else "Moderate"
+        else:
+            trend = "DOWNTREND (Bearish)"
+            strength = "Strong" if latest['close'] < latest['EMA21'] else "Moderate"
 
-# Recent momentum
-if len(df) > 48:
-    change_4h = (latest['close'] - df.iloc[-49]['close']) / df.iloc[-49]['close'] * 100
-    print(f"Last 4 hours change: {change_4h:+.2f}%")
-if len(df) > 289:
-    change_24h = (latest['close'] - df.iloc[-289]['close']) / df.iloc[-289]['close'] * 100
-    print(f"Last 24 hours change: {change_24h:+.2f}%")
-print("===============================================")
+        print(f"Overall Trend      : **{trend}** - {strength}")
+
+        if len(self.df) > 48:
+            change_4h = (latest['close'] - self.df.iloc[-49]['close']) / self.df.iloc[-49]['close'] * 100
+            print(f"Last 4 hours change: {change_4h:+.2f}%")
+        if len(self.df) > 289:
+            change_24h = (latest['close'] - self.df.iloc[-289]['close']) / self.df.iloc[-289]['close'] * 100
+            print(f"Last 24 hours change: {change_24h:+.2f}%")
+        print("="*60)
+
+    def run(self, days: int = 5):
+        """Full workflow in one call (exactly like before)."""
+        self.load_data()
+        self.calculate_indicators()
+        self.plot_and_save(days=days)
+        self.print_analysis()
+
+
+# ====================== RUN IT ======================
+if __name__ == "__main__":
+    chart = AeroChart()      # you can also do AeroChart('another_file.csv')
+    chart.run(days=5)        # change number if you ever want more/less days
