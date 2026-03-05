@@ -6,8 +6,8 @@ import pandas as pd
 
 def get_data_dir() -> str:
     scriptDir = os.path.dirname(os.path.abspath(__file__))
-    dataDir = os.path.join(scriptDir, '..', 'data')
-
+    #dataDir = os.path.join(scriptDir, '..', 'data')
+    dataDir = scriptDir #just put in the same folder as script..
     return os.path.abspath(dataDir)
 
 

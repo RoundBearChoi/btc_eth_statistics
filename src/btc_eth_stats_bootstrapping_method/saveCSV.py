@@ -15,8 +15,9 @@ def save_to_file(
     scriptDir = os.path.dirname(os.path.abspath(__file__))
     
     # Create path to '../data' relative to the script
-    dataDir = os.path.join(scriptDir, '..', 'data')
-    
+    #dataDir = os.path.join(scriptDir, '..', 'data')
+    dataDir = scriptDir # just save to same folder as script
+
     # Build full file path and normalize it (also force lowercase filename)
     filePath = os.path.join(dataDir, fileName)
     filePath = os.path.abspath(filePath.lower())
