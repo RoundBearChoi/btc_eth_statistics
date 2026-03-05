@@ -13,8 +13,7 @@ plt.rcParams['font.size'] = 13
 
 
 class WethCbBtcVolatilityAnalyzer:
-    """Refactored analyzer - everything is now inside the class.
-    Behavior, prints, output files, and plots are 100% identical to the original script."""
+    """Analyzer for WETH-cbBTC pool volatility patterns (15-minute candles)."""
 
     def __init__(self):
         # ====================== CONFIG ======================
@@ -31,14 +30,14 @@ class WethCbBtcVolatilityAnalyzer:
         self.final_df = None
 
     def run(self):
-        """Main execution - produces exactly the same outputs as the original script."""
+        """Main execution - produces the same outputs + new TXT hourly recommendations."""
         self._load_data()
         self._analyze_3h_buckets()
         self._analyze_rolling_3h()
         self._generate_hourly_recommendations()
         self._generate_dashboard()
         self._write_report()
-        print("\n🎉 ALL DONE! Now both files are perfect 🔥")
+        print("\n🎉 ALL DONE! CSV + TXT recommendations + dashboard + report generated 🔥")
 
     def _load_data(self):
         self.df = pd.read_csv(self.CSV_FILE)
@@ -67,7 +66,7 @@ class WethCbBtcVolatilityAnalyzer:
 
     def _analyze_rolling_3h(self):
         # ====================== ROLLING 3H ======================
-        window = 12
+        window = 12  # 12 × 15min = 3 hours
         self.df['rolling_high'] = self.df['high_usd'].rolling(window=window, min_periods=8).max()
         self.df['rolling_low'] = self.df['low_usd'].rolling(window=window, min_periods=8).min()
         self.df['rolling_range_pct'] = (self.df['rolling_high'] - self.df['rolling_low']) / self.df['rolling_low'] * 100
@@ -90,7 +89,7 @@ class WethCbBtcVolatilityAnalyzer:
         hourly['hour_kst'] = hourly['hour_start'].dt.hour
 
         self.stats_hourly = hourly.groupby('hour_kst')['range_pct'].agg([
-            'count',
+            ('Samples', 'count'),
             ('Median', 'median'),
             ('P75', lambda x: x.quantile(0.75)),
             ('P90', lambda x: x.quantile(0.90))
@@ -100,25 +99,23 @@ class WethCbBtcVolatilityAnalyzer:
             lambda x: f"{x:02d}:00 – {(x+1):02d}:00" if x < 23 else "23:00 – 00:00"
         )
 
-        self.stats_hourly['Balanced'] = (self.stats_hourly['Median'] * 1.60).round(1)
-        self.stats_hourly['Safe'] = (self.stats_hourly['Median'] * 1.80).round(1)
+        self.stats_hourly['Balanced']   = (self.stats_hourly['Median'] * 1.60).round(1)
+        self.stats_hourly['Safe']       = (self.stats_hourly['Median'] * 1.80).round(1)
         self.stats_hourly['Aggressive'] = (self.stats_hourly['Median'] * 1.30).round(1)
 
-        self.stats_hourly = self.stats_hourly.rename(columns={'count': 'Samples'})
-
         overall_median = hourly['range_pct'].median().round(3)
-        overall_p75 = hourly['range_pct'].quantile(0.75).round(3)
-        overall_p90 = hourly['range_pct'].quantile(0.90).round(3)
+        overall_p75    = hourly['range_pct'].quantile(0.75).round(3)
+        overall_p90    = hourly['range_pct'].quantile(0.90).round(3)
 
         overall_row = pd.DataFrame([{
-            'Bucket': 'Overall Full 24h',
-            'Median': overall_median,
-            'P75': overall_p75,
-            'P90': overall_p90,
-            'Balanced': (overall_median * 1.60).round(1),
-            'Safe': (overall_median * 1.80).round(1),
+            'Bucket':     'Overall Full 24h',
+            'Median':     overall_median,
+            'P75':        overall_p75,
+            'P90':        overall_p90,
+            'Balanced':   (overall_median * 1.60).round(1),
+            'Safe':       (overall_median * 1.80).round(1),
             'Aggressive': (overall_median * 1.30).round(1),
-            'Samples': len(hourly)
+            'Samples':    len(hourly)
         }])
 
         self.final_df = pd.concat([
@@ -126,11 +123,48 @@ class WethCbBtcVolatilityAnalyzer:
             self.stats_hourly[['Bucket', 'Median', 'P75', 'P90', 'Balanced', 'Safe', 'Aggressive', 'Samples']]
         ], ignore_index=True)
 
-        self.final_df = self.final_df[['Bucket', 'Median', 'P75', 'P90', 'Balanced', 'Safe', 'Aggressive', 'Samples']]
+        cols_order = ['Bucket', 'Median', 'P75', 'P90', 'Balanced', 'Safe', 'Aggressive', 'Samples']
+        self.final_df = self.final_df[cols_order]
 
+        # ────────────────────────────────────────────────
+        # 1. Save as CSV
         self.final_df.to_csv('weth_cbbtc_hourly_recommendations.csv', index=False)
+        print("✅ CSV saved → weth_cbbtc_hourly_recommendations.csv")
 
-        print("✅ Hourly CSV saved → weth_cbbtc_hourly_recommendations.csv")
+        # ────────────────────────────────────────────────
+        # 2. Save as nicely formatted TXT
+        with open('weth_cbbtc_hourly_recommendations.txt', 'w', encoding='utf-8') as f:
+            f.write("WETH-cbBTC Pool – Hourly Volatility Recommendations (KST)\n")
+            f.write("=" * 80 + "\n\n")
+            f.write(f"Data period:  {self.df.index.min().date()}  →  {self.df.index.max().date()}\n")
+            f.write(f"Total hourly samples: {len(hourly):,}\n\n")
+
+            header = f"{'Bucket':<18}  {'Median':>7}  {'P75':>6}  {'P90':>6}  " \
+                     f"{'Balanced':>10}  {'Safe':>8}  {'Aggressive':>11}  {'Samples':>8}"
+            f.write(header + "\n")
+            f.write("-" * 80 + "\n")
+
+            for _, row in self.final_df.iterrows():
+                line = f"{row['Bucket']:<18}  " \
+                       f"{row['Median']:7.3f}  " \
+                       f"{row['P75']:6.3f}  " \
+                       f"{row['P90']:6.3f}  " \
+                       f"{row['Balanced']:10.1f}  " \
+                       f"{row['Safe']:8.1f}  " \
+                       f"{row['Aggressive']:11.1f}  " \
+                       f"{int(row['Samples']):>8}"
+                f.write(line + "\n")
+
+            f.write("-" * 80 + "\n\n")
+            f.write("Multiplier explanation:\n")
+            f.write("• Balanced   = Median × 1.60\n")
+            f.write("• Safe       = Median × 1.80\n")
+            f.write("• Aggressive = Median × 1.30\n")
+
+        print("📄 TXT report saved → weth_cbbtc_hourly_recommendations.txt")
+
+        # Optional: still show preview in console
+        print("\nHourly recommendations preview:\n")
         print(self.final_df.to_string(index=False))
 
     def _generate_dashboard(self):
@@ -139,7 +173,6 @@ class WethCbBtcVolatilityAnalyzer:
 
         fig, axes = plt.subplots(2, 3, figsize=(22, 15))
 
-        # [ALL YOUR PLOTTING CODE BELOW STAYS 100% UNCHANGED]
         cutoff = self.df.index.max() - pd.Timedelta(days=90)
         recent_grouped = self.df[self.df.index >= cutoff].groupby(['date', 'bucket_start']).agg({
             'high_usd': 'max', 'low_usd': 'min'
@@ -196,26 +229,26 @@ class WethCbBtcVolatilityAnalyzer:
 
         plt.tight_layout()
 
-        # ==================== OPTIMIZED SAVE ====================
         plt.savefig('weth_cbbtc_3h_analysis_full.png',
                     dpi=180,
                     bbox_inches='tight',
                     pil_kwargs={'optimize': True, 'compress_level': 9})
 
-        print("✅ Big dashboard saved → weth_cbbtc_3h_analysis_full.png (~500 KB target)")
+        print("✅ Dashboard saved → weth_cbbtc_3h_analysis_full.png")
 
     def _write_report(self):
-        # ====================== REPORT ======================
-        with open('weth_cbbtc_volatility_report.txt', 'w') as f:
+        # ====================== SIMPLE TEXT REPORT ======================
+        with open('weth_cbbtc_volatility_report.txt', 'w', encoding='utf-8') as f:
             f.write("WETH-cbBTC Pool Volatility Report (KST)\n")
             f.write("=" * 60 + "\n\n")
             f.write(f"Period: {self.df.index[0].date()} → {self.df.index[-1].date()}\n\n")
             f.write(f"Most volatile 3h bucket: {self.bucket_stats.loc[self.bucket_stats['median'].idxmax(), 'time_bucket']} "
                     f"({self.bucket_stats['median'].max():.2f}%)\n")
-            f.write(f"Calmest 3h bucket: {self.bucket_stats.loc[self.bucket_stats['median'].idxmin(), 'time_bucket']} "
+            f.write(f"Calmest 3h bucket:   {self.bucket_stats.loc[self.bucket_stats['median'].idxmin(), 'time_bucket']} "
                     f"({self.bucket_stats['median'].min():.2f}%)\n\n")
-            f.write(f"Hottest hour (1h): {self.stats_hourly.loc[self.stats_hourly['Median'].idxmax(), 'Bucket']}\n")
-            f.write(f"Calmest hour (1h): {self.stats_hourly.loc[self.stats_hourly['Median'].idxmin(), 'Bucket']}\n")
+            f.write(f"Hottest hour (1h):    {self.stats_hourly.loc[self.stats_hourly['Median'].idxmax(), 'Bucket']}\n")
+            f.write(f"Calmest hour (1h):    {self.stats_hourly.loc[self.stats_hourly['Median'].idxmin(), 'Bucket']}\n\n")
+            f.write("See weth_cbbtc_hourly_recommendations.txt for detailed hourly ranges & suggested widths.\n")
 
 
 if __name__ == "__main__":
